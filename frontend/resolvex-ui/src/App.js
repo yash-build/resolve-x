@@ -1,58 +1,20 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState } from "react";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 import Home from "./pages/Home";
 import ReportIssue from "./pages/ReportIssue";
 import IssueFeed from "./pages/IssueFeed";
 import AdminPanel from "./pages/AdminPanel";
+import Login from "./pages/Login";
 
 function App() {
 
-  const [issues, setIssues] = useState([]);
-
-  // Add new issue
-  const addIssue = (newIssue) => {
-    setIssues([...issues, newIssue]);
-  };
-
-  // Upvote issue
-  const upvoteIssue = (id) => {
-
-    const updatedIssues = issues.map((issue) => {
-
-      if (issue.id === id) {
-        return { ...issue, votes: issue.votes + 1 };
-      }
-
-      return issue;
-
-    });
-
-    setIssues(updatedIssues);
-
-  };
-
-  // Update status
-  const updateStatus = (id, newStatus) => {
-
-    const updatedIssues = issues.map((issue) => {
-
-      if (issue.id === id) {
-        return { ...issue, status: newStatus };
-      }
-
-      return issue;
-
-    });
-
-    setIssues(updatedIssues);
-
-  };
-
   return (
 
-    <BrowserRouter>
+    <Router>
 
       <Navbar />
 
@@ -60,36 +22,27 @@ function App() {
 
         <Route path="/" element={<Home />} />
 
-        <Route
-          path="/report"
-          element={<ReportIssue addIssue={addIssue} />}
-        />
+        <Route path="/report" element={<ReportIssue />} />
 
-        <Route
-          path="/issues"
-          element={
-            <IssueFeed
-              issues={issues}
-              upvoteIssue={upvoteIssue}
-            />
-          }
-        />
+        <Route path="/feed" element={<IssueFeed />} />
+
+        <Route path="/login" element={<Login />} />
 
         <Route
           path="/admin"
           element={
-            <AdminPanel
-              issues={issues}
-              updateStatus={updateStatus}
-            />
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
           }
         />
 
       </Routes>
 
-    </BrowserRouter>
+    </Router>
 
   );
+
 }
 
 export default App;

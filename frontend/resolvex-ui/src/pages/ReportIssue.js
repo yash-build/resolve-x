@@ -1,86 +1,109 @@
-import { useState } from "react";
+import React, { useState, useContext } from "react";
+import { createIssue } from "../services/issueService";
+import { AuthContext } from "../context/AuthContext";
 
-function ReportIssue({ addIssue }) {
+function ReportIssue() {
 
-  const [location, setLocation] = useState("");
-  const [category, setCategory] = useState("Food");
+  const { currentUser } = useContext(AuthContext);
+
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [image, setImage] = useState(null);
+  const [category, setCategory] = useState("");
 
-  const handleSubmit = (e) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
 
     e.preventDefault();
 
-    const newIssue = {
-      id: Date.now(),
-      location,
-      category,
-      description,
-      status: "Pending",
-      votes: 0,
-      image
-    };
+    if (!currentUser) {
+      alert("Please login first");
+      return;
+    }
 
-    addIssue(newIssue);
+    setLoading(true);
 
-    setLocation("");
-    setDescription("");
-    setImage(null);
+    try {
 
-    alert("Issue submitted successfully!");
+      await createIssue({
+        title,
+        description,
+        category,
+        createdBy: currentUser.uid
+      });
+
+      alert("Issue reported successfully!");
+
+      setTitle("");
+      setDescription("");
+      setCategory("");
+
+    } catch (error) {
+
+      alert("Failed to submit issue");
+
+    }
+
+    setLoading(false);
+
   };
 
   return (
 
-    <div style={{padding:"20px"}}>
+    <div style={{ padding: "20px" }}>
 
-      <h2>Report an Issue</h2>
+      <h2>Report Issue</h2>
 
       <form onSubmit={handleSubmit}>
 
         <input
           type="text"
-          placeholder="Location"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Issue Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
         />
 
-        <br/><br/>
+        <br /><br />
+
+        <textarea
+          placeholder="Describe issue"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+        />
+
+        <br /><br />
 
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
+          required
         >
-          <option>Food</option>
-          <option>Hostel</option>
-          <option>Hygiene</option>
-          <option>Safety</option>
+
+          <option value="">Select Category</option>
+          <option value="Hostel">Hostel</option>
+          <option value="Food">Food</option>
+          <option value="Hygiene">Hygiene</option>
+          <option value="Infrastructure">Infrastructure</option>
+          <option value="Discipline">Discipline</option>
+
         </select>
 
-        <br/><br/>
+        <br /><br />
 
-        <textarea
-          placeholder="Describe the issue"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <button type="submit">
 
-        <br/><br/>
+          {loading ? "Submitting..." : "Submit Issue"}
 
-        <input
-          type="file"
-          onChange={(e) => setImage(URL.createObjectURL(e.target.files[0]))}
-        />
-
-        <br/><br/>
-
-        <button type="submit">Submit Issue</button>
+        </button>
 
       </form>
 
     </div>
 
   );
+
 }
 
 export default ReportIssue;

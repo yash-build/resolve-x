@@ -1,47 +1,41 @@
-function AdminPanel({ issues, updateStatus }) {
+import React, { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+
+function AdminPanel() {
+
+  const { role } = useContext(AuthContext);
+
+  if (role !== "admin") {
+
+    return (
+      <div style={{ padding: "20px" }}>
+        <h2>Access Denied</h2>
+        <p>You are not authorized to view this page.</p>
+      </div>
+    );
+
+  }
 
   return (
 
-    <div>
+    <div style={{ padding: "20px" }}>
 
-      <h2>Admin Panel</h2>
+      <h2>Admin Dashboard</h2>
 
-      {issues.length === 0 && (
-        <p>No issues available.</p>
-      )}
+      <p>Welcome Admin 👋</p>
 
-      {issues.map((issue) => (
+      <div style={{ marginTop: "20px" }}>
 
-        <div
-          key={issue.id}
-          style={{
-            border: "1px solid gray",
-            margin: "10px",
-            padding: "10px"
-          }}
-        >
+        <p>Here you will manage:</p>
 
-          <h3>{issue.location}</h3>
+        <ul>
+          <li>Users</li>
+          <li>Issues</li>
+          <li>Committees</li>
+          <li>Analytics</li>
+        </ul>
 
-          <p>{issue.description}</p>
-
-          <p>Status: {issue.status}</p>
-
-          <button onClick={() => updateStatus(issue.id, "Pending")}>
-            Pending
-          </button>
-
-          <button onClick={() => updateStatus(issue.id, "In Progress")}>
-            In Progress
-          </button>
-
-          <button onClick={() => updateStatus(issue.id, "Resolved")}>
-            Resolved
-          </button>
-
-        </div>
-
-      ))}
+      </div>
 
     </div>
 

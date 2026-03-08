@@ -1,113 +1,69 @@
-function IssueCard({ issue, upvoteIssue }) {
+import React from "react";
+import { db } from "../services/firebase";
+import { doc, updateDoc, increment } from "firebase/firestore";
 
-  const getPriority = () => {
+function IssueCard({ issue }) {
 
-    let score = 0;
+  const handleUpvote = async () => {
 
-    score += issue.votes * 2;
+    try {
 
-    if (issue.status === "Pending") score += 5;
-    if (issue.status === "In Progress") score += 3;
+      const issueRef = doc(db, "issues", issue.id);
 
-    if (issue.category === "Safety") score += 10;
-    if (issue.category === "Hygiene") score += 5;
+      await updateDoc(issueRef, {
+        upvotes: increment(1)
+      });
 
-    if (score > 20) return "High";
-    if (score > 10) return "Medium";
+    } catch (error) {
+      console.error("Upvote failed:", error);
+    }
 
-    return "Low";
   };
 
-  const priority = getPriority();
+  const markResolved = async () => {
 
-  const getStatusColor = () => {
-    if (issue.status === "Pending") return "#f39c12";
-    if (issue.status === "In Progress") return "#3498db";
-    if (issue.status === "Resolved") return "#2ecc71";
-    return "#777";
+    try {
+
+      const issueRef = doc(db, "issues", issue.id);
+
+      await updateDoc(issueRef, {
+        status: "resolved"
+      });
+
+    } catch (error) {
+      console.error("Resolve failed:", error);
+    }
+
   };
 
   return (
 
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: "12px",
-        padding: "16px",
-        margin: "15px",
-        background: "#fff",
-        boxShadow: "0 4px 8px rgba(0,0,0,0.05)"
-      }}
-    >
+    <div style={{
+      border: "1px solid #ccc",
+      padding: "15px",
+      marginBottom: "10px",
+      borderRadius: "5px"
+    }}>
 
-      {/* Location */}
-      <h3>📍 {issue.location}</h3>
+      <h3>{issue.title}</h3>
 
-      {/* Category */}
-      <span
-        style={{
-          background:"#eee",
-          padding:"4px 10px",
-          borderRadius:"6px",
-          fontSize:"12px"
-        }}
-      >
-        {issue.category}
-      </span>
+      <p>{issue.description}</p>
 
-      {/* Description */}
-      <p style={{marginTop:"10px"}}>
-        {issue.description}
-      </p>
+      <p><b>Category:</b> {issue.category}</p>
 
-      {/* Image */}
-      {issue.image && (
-        <img
-          src={issue.image}
-          alt="issue"
-          style={{
-            width:"100%",
-            borderRadius:"8px",
-            marginTop:"10px"
-          }}
-        />
-      )}
+      <p><b>Upvotes:</b> {issue.upvotes}</p>
 
-      {/* Status */}
-      <p style={{marginTop:"10px"}}>
-        Status:
-        <span
-          style={{
-            background:getStatusColor(),
-            color:"white",
-            padding:"4px 8px",
-            borderRadius:"6px",
-            marginLeft:"8px",
-            fontSize:"12px"
-          }}
-        >
-          {issue.status}
-        </span>
-      </p>
+      <p><b>Status:</b> {issue.status}</p>
 
-      {/* Priority */}
-      <p>
-        ⚡ Priority: <b>{priority}</b>
-      </p>
+      <button onClick={handleUpvote}>
+        👍 Upvote
+      </button>
 
-      {/* Votes */}
       <button
-        onClick={() => upvoteIssue(issue.id)}
-        style={{
-          background:"#007bff",
-          color:"white",
-          border:"none",
-          padding:"6px 12px",
-          borderRadius:"6px",
-          cursor:"pointer"
-        }}
+        onClick={markResolved}
+        style={{ marginLeft: "10px" }}
       >
-        👍 {issue.votes}
+        ✅ Mark Resolved
       </button>
 
     </div>
