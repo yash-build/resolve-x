@@ -3,15 +3,16 @@ import { db } from "../services/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import IssueCard from "../components/IssueCard";
 
-function IssueFeed() {
+const IssueFeed = () => {
 
   const [issues, setIssues] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useEffect(() => {
 
     const q = query(
       collection(db, "issues"),
-      orderBy("upvotes", "desc")
+      orderBy("createdAt", "desc")
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -29,24 +30,55 @@ function IssueFeed() {
 
   }, []);
 
+  const filteredIssues =
+    selectedCategory === "All"
+      ? issues
+      : issues.filter((issue) => issue.category === selectedCategory);
+
   return (
 
-    <div style={{ padding: "20px" }}>
+    <div className="max-w-3xl mx-auto p-6">
 
-      <h2>Issue Feed</h2>
+      <h1 className="text-2xl font-bold mb-6">
+        Campus Issues
+      </h1>
 
-      {issues.length === 0 ? (
-        <p>No issues reported yet.</p>
-      ) : (
-        issues.map((issue) => (
-          <IssueCard key={issue.id} issue={issue} />
-        ))
-      )}
+      <div className="flex flex-wrap gap-2 mb-6">
+
+        {["All","Hostel","Food","Hygiene","Infrastructure","Discipline"].map((cat) => (
+
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-3 py-1 rounded-full text-sm ${
+              selectedCategory === cat
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-200"
+            }`}
+          >
+            {cat}
+          </button>
+
+        ))}
+
+      </div>
+
+      <div className="space-y-4">
+
+        {filteredIssues.length === 0 ? (
+          <p className="text-gray-500">No issues found.</p>
+        ) : (
+          filteredIssues.map((issue) => (
+            <IssueCard key={issue.id} issue={issue} />
+          ))
+        )}
+
+      </div>
 
     </div>
 
   );
 
-}
+};
 
 export default IssueFeed;

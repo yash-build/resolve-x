@@ -1,72 +1,58 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../services/firebase";
-import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 
-function Navbar() {
+const Navbar = () => {
 
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser } = useAuth();
 
   const handleLogout = async () => {
-
-    try {
-
-      await signOut(auth);
-
-      alert("Logged out successfully");
-
-    } catch (error) {
-
-      console.error("Logout error:", error);
-
-    }
-
+    await signOut(auth);
   };
 
   return (
 
-    <nav style={{
-      padding: "10px",
-      borderBottom: "1px solid #ccc",
-      marginBottom: "20px"
-    }}>
+    <nav className="bg-white border-b shadow-sm px-6 py-3 flex justify-between items-center">
 
-      <Link to="/" style={{ marginRight: "15px" }}>
-        Home
-      </Link>
+      <h1 className="text-xl font-bold text-indigo-600">
+        ResolveX
+      </h1>
 
-      <Link to="/report" style={{ marginRight: "15px" }}>
-        Report Issue
-      </Link>
+      <div className="flex gap-4 text-sm">
 
-      <Link to="/feed" style={{ marginRight: "15px" }}>
-        Issue Feed
-      </Link>
+        <Link to="/">Home</Link>
 
-      <Link to="/admin" style={{ marginRight: "15px" }}>
-        Admin Panel
-      </Link>
+        <Link to="/report">Report Issue</Link>
 
-      {!currentUser && (
-        <Link to="/login">
-          Login
-        </Link>
-      )}
+        <Link to="/feed">Issue Feed</Link>
 
-      {currentUser && (
-        <button
-          onClick={handleLogout}
-          style={{ marginLeft: "10px" }}
-        >
-          Logout
-        </button>
-      )}
+        <Link to="/committee">Committee</Link>
+
+        <Link to="/admin">Admin Panel</Link>
+
+        {currentUser ? (
+
+          <button
+            onClick={handleLogout}
+            className="text-red-600"
+          >
+            Logout
+          </button>
+
+        ) : (
+
+          <Link to="/login">Login</Link>
+
+        )}
+
+      </div>
 
     </nav>
 
   );
 
-}
+};
 
 export default Navbar;
