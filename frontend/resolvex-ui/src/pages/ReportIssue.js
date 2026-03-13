@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-
 import { createIssue } from "../services/issueService";
-
 import { useAuth } from "../context/AuthContext";
 
 const ReportIssue = () => {
@@ -16,13 +14,9 @@ const ReportIssue = () => {
 
   const [location, setLocation] = useState("Hostel Block A");
 
-  const [submitting, setSubmitting] = useState(false);
+  const [sensitive, setSensitive] = useState(false);
 
-  /*
-  ================================================================
-  HANDLE SUBMIT
-  ================================================================
-  */
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
 
@@ -36,9 +30,9 @@ const ReportIssue = () => {
       description,
       category,
       location,
+      sensitive,
 
       createdBy: currentUser.uid,
-
       createdByName: currentUser.displayName
 
     });
@@ -48,36 +42,27 @@ const ReportIssue = () => {
 
     setSubmitting(false);
 
-    alert("Issue reported successfully");
+    alert("Issue submitted successfully");
 
   };
-
-  /*
-  ================================================================
-  UI
-  ================================================================
-  */
 
   return (
 
     <div className="max-w-xl mx-auto">
 
       <h1 className="text-3xl font-bold mb-6">
+
         Report Issue
+
       </h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4"
-      >
+      <form onSubmit={handleSubmit} className="space-y-4">
 
         <input
           type="text"
           placeholder="Issue title"
           value={title}
-          onChange={(e) =>
-            setTitle(e.target.value)
-          }
+          onChange={(e) => setTitle(e.target.value)}
           className="w-full border p-2 rounded"
           required
         />
@@ -85,9 +70,7 @@ const ReportIssue = () => {
         <textarea
           placeholder="Describe the issue"
           value={description}
-          onChange={(e) =>
-            setDescription(e.target.value)
-          }
+          onChange={(e) => setDescription(e.target.value)}
           className="w-full border p-2 rounded"
           rows="4"
           required
@@ -95,9 +78,7 @@ const ReportIssue = () => {
 
         <select
           value={category}
-          onChange={(e) =>
-            setCategory(e.target.value)
-          }
+          onChange={(e) => setCategory(e.target.value)}
           className="w-full border p-2 rounded"
         >
 
@@ -111,9 +92,7 @@ const ReportIssue = () => {
 
         <select
           value={location}
-          onChange={(e) =>
-            setLocation(e.target.value)
-          }
+          onChange={(e) => setLocation(e.target.value)}
           className="w-full border p-2 rounded"
         >
 
@@ -125,15 +104,25 @@ const ReportIssue = () => {
 
         </select>
 
+        <label className="flex items-center gap-2">
+
+          <input
+            type="checkbox"
+            checked={sensitive}
+            onChange={(e) => setSensitive(e.target.checked)}
+          />
+
+          Mark as Sensitive Issue (Only Admin/Authority can see)
+
+        </label>
+
         <button
           type="submit"
           disabled={submitting}
           className="bg-indigo-600 text-white px-4 py-2 rounded"
         >
 
-          {submitting
-            ? "Submitting..."
-            : "Submit Issue"}
+          {submitting ? "Submitting..." : "Submit Issue"}
 
         </button>
 

@@ -1,19 +1,19 @@
 /*
 =====================================================================
-ResolveX Main Application Router
+ResolveX - Main Application Router
 =====================================================================
 
-This is the central routing engine of ResolveX.
+This file controls the entire navigation architecture of ResolveX.
 
 Responsibilities:
 
-1. Wrap the application with AuthProvider
-2. Control protected routes
-3. Manage role-based access control
-4. Render Navbar layout conditionally
-5. Provide scalable routing architecture
+1. Wrap the app with authentication provider
+2. Configure all application routes
+3. Apply role-based route protection
+4. Render global layout (Navbar + content)
+5. Hide navigation on login page
 6. Prevent unauthorized page access
-7. Maintain clean separation between pages
+7. Provide scalable routing structure
 
 =====================================================================
 */
@@ -55,39 +55,45 @@ import Login from "./pages/Login";
 
 import StudentDashboard from "./pages/StudentDashboard";
 
-import IssueFeed from "./pages/IssueFeed";
-
-import ReportIssue from "./pages/ReportIssue";
-
-import Notifications from "./pages/Notifications";
-
 import CommitteeDashboard from "./pages/CommitteeDashboard";
 
 import AdminDashboard from "./pages/AdminDashboard";
 
+import AuthorityDashboard from "./pages/AuthorityDashboard";
+
+import IssueFeed from "./pages/IssueFeed";
+
+import ReportIssue from "./pages/ReportIssue";
+
 import MyIssues from "./pages/MyIssues";
+
+import Notifications from "./pages/Notifications";
+
+import Leaderboard from "./pages/Leaderboard";
 
 /*
 =====================================================================
 Application Layout Controller
 =====================================================================
 
-This component determines:
+This component manages:
 
-• When to show sidebar
-• Where pages render
-• Layout consistency
+• Sidebar visibility
+• Content rendering
+• Page routing layout
+
+Navbar should NOT appear on login screen.
 
 =====================================================================
 */
 
-function AppLayout() {
+function ApplicationLayout() {
 
   const location = useLocation();
 
   /*
   ---------------------------------------------------------------
-  Hide sidebar on login page
+  Determine if Navbar should be hidden
   ---------------------------------------------------------------
   */
 
@@ -101,7 +107,7 @@ function AppLayout() {
 
   return (
 
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
 
       {/* Sidebar Navigation */}
 
@@ -165,19 +171,6 @@ function AppLayout() {
           />
 
           <Route
-            path="/feed"
-            element={
-
-              <ProtectedRoute allowedRoles={["student","committee","admin"]}>
-
-                <IssueFeed />
-
-              </ProtectedRoute>
-
-            }
-          />
-
-          <Route
             path="/my-issues"
             element={
 
@@ -230,9 +223,41 @@ function AppLayout() {
 
           {/*
           =========================================================
+          AUTHORITY ROUTES
+          =========================================================
+          */}
+
+          <Route
+            path="/authority"
+            element={
+
+              <ProtectedRoute allowedRoles={["admin","authority"]}>
+
+                <AuthorityDashboard />
+
+              </ProtectedRoute>
+
+            }
+          />
+
+          {/*
+          =========================================================
           SHARED ROUTES
           =========================================================
           */}
+
+          <Route
+            path="/feed"
+            element={
+
+              <ProtectedRoute allowedRoles={["student","committee","admin"]}>
+
+                <IssueFeed />
+
+              </ProtectedRoute>
+
+            }
+          />
 
           <Route
             path="/notifications"
@@ -247,9 +272,22 @@ function AppLayout() {
             }
           />
 
+          <Route
+            path="/leaderboard"
+            element={
+
+              <ProtectedRoute allowedRoles={["student","committee","admin"]}>
+
+                <Leaderboard />
+
+              </ProtectedRoute>
+
+            }
+          />
+
           {/*
           =========================================================
-          DEFAULT ROUTE REDIRECTION
+          DEFAULT REDIRECTION
           =========================================================
           */}
 
@@ -260,7 +298,7 @@ function AppLayout() {
 
           {/*
           =========================================================
-          FALLBACK ROUTE (404 HANDLER)
+          FALLBACK ROUTE (404 PAGE)
           =========================================================
           */}
 
@@ -271,15 +309,11 @@ function AppLayout() {
               <div className="text-center mt-20">
 
                 <h1 className="text-4xl font-bold mb-4">
-
                   404
-
                 </h1>
 
                 <p className="text-gray-500">
-
-                  Page not found.
-
+                  The page you are looking for does not exist.
                 </p>
 
               </div>
@@ -299,14 +333,14 @@ function AppLayout() {
 
 /*
 =====================================================================
-Main App Component
+Main Application Component
 =====================================================================
 
-Wraps the entire application with:
+Wraps entire app with:
 
-• Authentication context
-• Router provider
-• Layout controller
+• Firebase Authentication context
+• React Router provider
+• Application layout controller
 
 =====================================================================
 */
@@ -319,7 +353,7 @@ function App() {
 
       <Router>
 
-        <AppLayout />
+        <ApplicationLayout />
 
       </Router>
 

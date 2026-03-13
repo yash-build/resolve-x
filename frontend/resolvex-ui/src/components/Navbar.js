@@ -1,92 +1,44 @@
 /*
-====================================================================
-ResolveX Navigation Sidebar + Notification Panel
-====================================================================
+=====================================================================
+ResolveX Role-Based Navigation Sidebar
+=====================================================================
 
-This component handles:
+This component renders the sidebar navigation.
 
-1. Navigation sidebar
-2. Notification bell
-3. Real-time unread notification count
-4. Notification dropdown panel
-5. Mark notification as read
-6. Logout functionality
-7. Current user display
+Features:
 
-====================================================================
+• Role-based navigation
+• Notification counter
+• Logout button
+• Current user display
+• Responsive layout
+
+Roles Supported:
+
+student
+committee
+admin
+authority
+
+=====================================================================
 */
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 
-import {
-  subscribeToNotifications,
-  markNotificationAsRead
-} from "../services/notificationService";
-
 const Navbar = () => {
 
-  /*
-  ================================================================
-  AUTHENTICATION CONTEXT
-  ================================================================
-  */
-
-  const { currentUser, logout } = useAuth();
+  const { currentUser, role, logout } = useAuth();
 
   const navigate = useNavigate();
 
   /*
-  ================================================================
-  STATE VARIABLES
-  ================================================================
-  */
-
-  const [notifications, setNotifications] = useState([]);
-
-  const [notificationCount, setNotificationCount] = useState(0);
-
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  /*
-  ================================================================
-  SUBSCRIBE TO REAL-TIME NOTIFICATIONS
-  ================================================================
-  */
-
-  useEffect(() => {
-
-    if (!currentUser) return;
-
-    const unsubscribe = subscribeToNotifications(
-
-      currentUser.uid,
-
-      (data) => {
-
-        setNotifications(data);
-
-        const unread = data.filter(
-          n => !n.read
-        ).length;
-
-        setNotificationCount(unread);
-
-      }
-
-    );
-
-    return () => unsubscribe();
-
-  }, [currentUser]);
-
-  /*
-  ================================================================
-  HANDLE LOGOUT
-  ================================================================
+  ---------------------------------------------------------------
+  Handle Logout
+  ---------------------------------------------------------------
   */
 
   const handleLogout = async () => {
@@ -98,115 +50,114 @@ const Navbar = () => {
   };
 
   /*
-  ================================================================
-  HANDLE NOTIFICATION CLICK
-  ================================================================
+  ---------------------------------------------------------------
+  Navigation by Role
+  ---------------------------------------------------------------
   */
 
-  const handleNotificationClick = async (notification) => {
+  const renderMenuItems = () => {
 
-    if (!notification.read) {
+    if (role === "student") {
 
-      await markNotificationAsRead(notification.id);
+      return (
+
+        <>
+          <Link to="/student-dashboard">Dashboard</Link>
+
+          <Link to="/report">Report Issue</Link>
+
+          <Link to="/feed">Issue Feed</Link>
+
+          <Link to="/my-issues">My Issues</Link>
+
+          <Link to="/leaderboard">Leaderboard</Link>
+
+          <Link to="/notifications">Notifications</Link>
+        </>
+
+      );
+
+    }
+
+    if (role === "committee") {
+
+      return (
+
+        <>
+          <Link to="/committee">Committee Dashboard</Link>
+
+          <Link to="/feed">Issue Feed</Link>
+
+          <Link to="/notifications">Notifications</Link>
+        </>
+
+      );
+
+    }
+
+    if (role === "admin") {
+
+      return (
+
+        <>
+          <Link to="/admin-dashboard">Admin Dashboard</Link>
+
+          <Link to="/authority">Authority Panel</Link>
+
+          <Link to="/feed">Issue Feed</Link>
+
+          <Link to="/leaderboard">Leaderboard</Link>
+
+          <Link to="/notifications">Notifications</Link>
+        </>
+
+      );
+
+    }
+
+    if (role === "authority") {
+
+      return (
+
+        <>
+          <Link to="/authority">Authority Dashboard</Link>
+
+          <Link to="/notifications">Notifications</Link>
+        </>
+
+      );
 
     }
 
   };
 
   /*
-  ================================================================
-  UI RENDER
-  ================================================================
+  ---------------------------------------------------------------
+  Render Sidebar
+  ---------------------------------------------------------------
   */
 
   return (
 
-    <div className="w-64 h-screen bg-gradient-to-b from-indigo-600 to-purple-600 text-white flex flex-col p-6">
+    <div className="w-full md:w-64 h-screen bg-gradient-to-b from-indigo-600 to-purple-600 text-white flex flex-col p-6">
 
-      {/* LOGO */}
+      {/* Logo */}
 
       <h1 className="text-2xl font-bold mb-8">
+
         ResolveX
+
       </h1>
 
-      {/* NAVIGATION LINKS */}
+      {/* Navigation */}
 
       <nav className="flex flex-col gap-4">
 
-        <Link to="/student-dashboard">
-          Dashboard
-        </Link>
-
-        <Link to="/report">
-          Report Issue
-        </Link>
-
-        <Link to="/feed">
-          Issue Feed
-        </Link>
-
-        <Link to="/my-issues">
-          My Issues
-        </Link>
-
-        {/* NOTIFICATION BELL */}
-
-        <button
-          onClick={() =>
-            setDropdownOpen(!dropdownOpen)
-          }
-          className="text-left"
-        >
-
-          🔔 Notifications ({notificationCount})
-
-        </button>
+        {renderMenuItems()}
 
       </nav>
 
-      {/* NOTIFICATION DROPDOWN */}
-
-      {dropdownOpen && (
-
-        <div className="mt-4 bg-white text-black rounded shadow p-4 max-h-64 overflow-y-auto">
-
-          <h2 className="font-bold mb-2">
-            Notifications
-          </h2>
-
-          {notifications.length === 0 && (
-
-            <div className="text-gray-500">
-              No notifications yet
-            </div>
-
-          )}
-
-          {notifications.map(notification => (
-
-            <div
-              key={notification.id}
-              onClick={() =>
-                handleNotificationClick(notification)
-              }
-              className={`p-2 border-b cursor-pointer ${
-                notification.read
-                  ? "bg-gray-100"
-                  : "bg-blue-100"
-              }`}
-            >
-
-              {notification.message}
-
-            </div>
-
-          ))}
-
-        </div>
-
-      )}
-
-      {/* USER INFO */}
+      {/* User Info */}
 
       <div className="mt-auto">
 
@@ -215,18 +166,28 @@ const Navbar = () => {
           Logged in as:
 
           <div className="font-semibold">
+
             {currentUser?.displayName}
+
+          </div>
+
+          <div className="text-xs opacity-80">
+
+            Role: {role}
+
           </div>
 
         </div>
 
-        {/* LOGOUT BUTTON */}
+        {/* Logout */}
 
         <button
           onClick={handleLogout}
           className="w-full bg-white text-indigo-600 py-2 rounded"
         >
+
           Logout
+
         </button>
 
       </div>

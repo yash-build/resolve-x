@@ -1,20 +1,22 @@
 /*
-======================================================================
+=====================================================================
 ResolveX Issue Service
-======================================================================
+=====================================================================
 
-Responsibilities:
+This service controls ALL issue lifecycle operations.
 
-1. Create issue
-2. Detect priority automatically
-3. Route issue to committee
-4. Upvote issue
-5. Resolve issue
-6. Track resolution time
-7. Escalate critical issues to administrators
-8. Send notifications
+System Responsibilities:
 
-======================================================================
+1. Create issues
+2. Route issues to committees
+3. Detect issue priority
+4. Handle sensitive issues
+5. Track resolution time
+6. Manage upvotes
+7. Trigger notifications
+8. Escalate critical issues
+
+=====================================================================
 */
 
 import {
@@ -38,45 +40,35 @@ import { detectPriority } from "../utils/priorityDetector";
 import { createNotification } from "./notificationService";
 
 /*
-======================================================================
-Committee Routing
-======================================================================
+=====================================================================
+Committee Routing Logic
+=====================================================================
 */
 
 function determineCommittee(category) {
 
-  if (category === "Food") {
-    return "Mess Committee";
-  }
+  if (category === "Food") return "Mess Committee";
 
-  if (category === "Hostel") {
-    return "Hostel Committee";
-  }
+  if (category === "Hostel") return "Hostel Committee";
 
-  if (category === "Infrastructure") {
-    return "Maintenance Committee";
-  }
+  if (category === "Infrastructure") return "Maintenance Committee";
 
-  if (category === "Hygiene") {
-    return "Sanitation Committee";
-  }
+  if (category === "Hygiene") return "Sanitation Committee";
 
-  if (category === "Discipline") {
-    return "Disciplinary Committee";
-  }
+  if (category === "Discipline") return "Disciplinary Committee";
 
   return "General Committee";
 
 }
 
 /*
-======================================================================
-Escalation Logic
-======================================================================
+=====================================================================
+Critical Issue Escalation
+=====================================================================
 
-If an issue is critical, notify all admins.
+If issue priority is CRITICAL, notify all admins.
 
-======================================================================
+=====================================================================
 */
 
 async function escalateCriticalIssue(issueData) {
@@ -99,7 +91,7 @@ async function escalateCriticalIssue(issueData) {
 
       userId: admin.id,
 
-      message: `🚨 CRITICAL ISSUE REPORTED: ${issueData.title}`
+      message: `🚨 CRITICAL ISSUE: ${issueData.title}`
 
     });
 
@@ -108,9 +100,18 @@ async function escalateCriticalIssue(issueData) {
 }
 
 /*
-======================================================================
+=====================================================================
 Create Issue
-======================================================================
+=====================================================================
+
+Every issue now contains:
+
+• sensitive flag
+• routing data
+• timestamps
+• priority level
+
+=====================================================================
 */
 
 export async function createIssue(issueData) {
@@ -124,15 +125,63 @@ export async function createIssue(issueData) {
 
   const issueDocument = {
 
-    ...issueData,
+    /*
+    ---------------------------------------------------------------
+    Core Issue Fields
+    ---------------------------------------------------------------
+    */
+
+    title: issueData.title,
+
+    description: issueData.description,
+
+    category: issueData.category,
+
+    location: issueData.location,
+
+    /*
+    ---------------------------------------------------------------
+    Sensitive Issue Flag
+    ---------------------------------------------------------------
+    */
+
+    sensitive: issueData.sensitive ? true : false,
+
+    /*
+    ---------------------------------------------------------------
+    Routing + Priority
+    ---------------------------------------------------------------
+    */
 
     assignedCommittee: committee,
 
     priority: priority,
 
-    upvotes: 0,
+    /*
+    ---------------------------------------------------------------
+    Status Fields
+    ---------------------------------------------------------------
+    */
 
     status: "pending",
+
+    upvotes: 0,
+
+    /*
+    ---------------------------------------------------------------
+    User Metadata
+    ---------------------------------------------------------------
+    */
+
+    createdBy: issueData.createdBy,
+
+    createdByName: issueData.createdByName,
+
+    /*
+    ---------------------------------------------------------------
+    Time Tracking
+    ---------------------------------------------------------------
+    */
 
     createdAt: serverTimestamp(),
 
@@ -167,9 +216,9 @@ export async function createIssue(issueData) {
 }
 
 /*
-======================================================================
+=====================================================================
 Upvote Issue
-======================================================================
+=====================================================================
 */
 
 export async function upvoteIssue(issueId) {
@@ -185,9 +234,9 @@ export async function upvoteIssue(issueId) {
 }
 
 /*
-======================================================================
+=====================================================================
 Resolve Issue
-======================================================================
+=====================================================================
 */
 
 export async function resolveIssue(issueId, issueData) {

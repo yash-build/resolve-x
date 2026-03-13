@@ -3,14 +3,18 @@
 ResolveX Admin Analytics Dashboard
 =====================================================================
 
-Displays:
+This dashboard provides administrators with deep insight into
+campus operations.
 
-• Total Issues
-• Pending Issues
-• Resolved Issues
-• Issues by Category (Chart)
-• Committee Performance
-• Location Heatmap Data
+Analytics Included:
+
+1. Total issues
+2. Pending issues
+3. Resolved issues
+4. Issue category chart
+5. Campus location heatmap
+6. Committee performance
+7. Issue distribution insights
 
 =====================================================================
 */
@@ -49,19 +53,35 @@ ChartJS.register(
 
 const AdminDashboard = () => {
 
+  /*
+  ===============================================================
+  STATE VARIABLES
+  ===============================================================
+  */
+
   const [stats, setStats] = useState({
+
     total: 0,
     pending: 0,
     resolved: 0
+
   });
 
-  const [categoryStats, setCategoryStats] = useState([]);
+  const [categoryStats, setCategoryStats] = useState({});
+
+  const [locationStats, setLocationStats] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
+  /*
+  ===============================================================
+  LOAD DATA FROM FIRESTORE
+  ===============================================================
+  */
+
   useEffect(() => {
 
-    async function loadData() {
+    async function loadAnalytics() {
 
       const snapshot = await getDocs(
         collection(db, "issues")
@@ -72,53 +92,112 @@ const AdminDashboard = () => {
         ...doc.data()
       }));
 
+      /*
+      ------------------------------------------------------------
+      BASIC STATISTICS
+      ------------------------------------------------------------
+      */
+
       const total = issues.length;
 
       const pending = issues.filter(
-        i => i.status === "pending"
+        issue => issue.status === "pending"
       ).length;
 
       const resolved = issues.filter(
-        i => i.status === "resolved"
+        issue => issue.status === "resolved"
       ).length;
 
-      setStats({ total, pending, resolved });
+      setStats({
+        total,
+        pending,
+        resolved
+      });
 
       /*
+      ------------------------------------------------------------
       CATEGORY ANALYTICS
+      ------------------------------------------------------------
       */
 
       const categoryMap = {};
 
       issues.forEach(issue => {
 
-        const cat = issue.category || "Unknown";
+        const category = issue.category || "Unknown";
 
-        if (!categoryMap[cat]) {
+        if (!categoryMap[category]) {
 
-          categoryMap[cat] = 0;
+          categoryMap[category] = 0;
 
         }
 
-        categoryMap[cat]++;
+        categoryMap[category]++;
 
       });
 
       setCategoryStats(categoryMap);
 
+      /*
+      ------------------------------------------------------------
+      LOCATION HEATMAP DATA
+      ------------------------------------------------------------
+      */
+
+      const locationMap = {};
+
+      issues.forEach(issue => {
+
+        const location = issue.location || "Unknown";
+
+        if (!locationMap[location]) {
+
+          locationMap[location] = 0;
+
+        }
+
+        locationMap[location]++;
+
+      });
+
+      const locationData = Object.entries(locationMap)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([location,count])=>({
+          location,
+          count
+        }));
+
+      setLocationStats(locationData);
+
       setLoading(false);
 
     }
 
-    loadData();
+    loadAnalytics();
 
   }, []);
 
+  /*
+  ===============================================================
+  LOADING STATE
+  ===============================================================
+  */
+
   if (loading) {
 
-    return <div>Loading analytics...</div>;
+    return (
+      <div className="text-center mt-10">
+        Loading analytics...
+      </div>
+    );
 
   }
+
+  /*
+  ===============================================================
+  CHART DATA
+  ===============================================================
+  */
 
   const chartData = {
 
@@ -132,11 +211,18 @@ const AdminDashboard = () => {
         data: Object.values(categoryStats),
 
         backgroundColor: "rgba(99,102,241,0.6)"
+
       }
 
     ]
 
   };
+
+  /*
+  ===============================================================
+  UI RENDER
+  ===============================================================
+  */
 
   return (
 
@@ -144,28 +230,30 @@ const AdminDashboard = () => {
 
       <h1 className="text-3xl font-bold mb-8">
 
-        Admin Analytics
+        Admin Analytics Dashboard
 
       </h1>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      {/* STATISTICS CARDS */}
+
+      <div className="grid grid-cols-3 gap-6 mb-10">
 
         <div className="bg-white p-6 rounded shadow text-center">
-          Total Issues
+          <h2>Total Issues</h2>
           <p className="text-3xl font-bold">
             {stats.total}
           </p>
         </div>
 
         <div className="bg-white p-6 rounded shadow text-center">
-          Pending
+          <h2>Pending</h2>
           <p className="text-3xl text-yellow-600 font-bold">
             {stats.pending}
           </p>
         </div>
 
         <div className="bg-white p-6 rounded shadow text-center">
-          Resolved
+          <h2>Resolved</h2>
           <p className="text-3xl text-green-600 font-bold">
             {stats.resolved}
           </p>
@@ -173,13 +261,50 @@ const AdminDashboard = () => {
 
       </div>
 
-      <div className="bg-white p-6 rounded shadow">
+      {/* CATEGORY CHART */}
+
+      <div className="bg-white p-6 rounded shadow mb-10">
 
         <h2 className="text-xl font-semibold mb-4">
-          Issue Categories
+          Issues by Category
         </h2>
 
         <Bar data={chartData} />
+
+      </div>
+
+      {/* LOCATION HEATMAP */}
+
+      <div className="bg-white p-6 rounded shadow">
+
+        <h2 className="text-xl font-semibold mb-4">
+
+          Campus Issue Hotspots
+
+        </h2>
+
+        <div className="space-y-3">
+
+          {locationStats.map(loc => (
+
+            <div
+              key={loc.location}
+              className="flex justify-between border-b pb-2"
+            >
+
+              <span>{loc.location}</span>
+
+              <span className="font-bold">
+
+                {loc.count} issues
+
+              </span>
+
+            </div>
+
+          ))}
+
+        </div>
 
       </div>
 
