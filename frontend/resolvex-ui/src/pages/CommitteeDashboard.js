@@ -21,6 +21,11 @@ const CommitteeDashboard = () => {
 
         setIssues(data);
 
+      },
+      (error) => {
+
+        console.error("Firestore error:", error);
+
       }
     );
 
@@ -34,7 +39,7 @@ const CommitteeDashboard = () => {
 
   return (
 
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto">
 
       <h1 className="text-2xl font-bold mb-6">
         Committee Dashboard
@@ -56,13 +61,9 @@ const CommitteeDashboard = () => {
 
       <div className="space-y-4">
 
-        {filteredIssues.length === 0 ? (
-          <p>No issues assigned.</p>
-        ) : (
-          filteredIssues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} />
-          ))
-        )}
+        {filteredIssues.map((issue) => (
+          <IssueCard key={issue.id} issue={issue} />
+        ))}
 
       </div>
 

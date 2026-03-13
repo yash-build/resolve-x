@@ -1,53 +1,48 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../services/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
-export const AuthContext = createContext();
+const AuthContext = createContext();
 
-export const useAuth = () => {
+export function useAuth() {
   return useContext(AuthContext);
-};
+}
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
 
   const [currentUser, setCurrentUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const logout = () => {
+    return signOut(auth);
+  };
+
   useEffect(() => {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
 
+      setCurrentUser(user);
+
       if (user) {
 
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
+        try {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
 
-        if (!userSnap.exists()) {
+          if (docSnap.exists()) {
+            setRole(docSnap.data().role);
+          } else {
+            setRole("student");
+          }
 
-          await setDoc(userRef, {
-            name: user.displayName,
-            email: user.email,
-            role: "student",
-            createdAt: new Date()
-          });
-
-          setRole("student");
-
-        } else {
-
-          setRole(userSnap.data().role);
-
+        } catch (error) {
+          console.error("Error fetching user role:", error);
         }
 
-        setCurrentUser(user);
-
       } else {
-
-        setCurrentUser(null);
         setRole(null);
-
       }
 
       setLoading(false);
@@ -60,7 +55,8 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
-    role
+    role,
+    logout
   };
 
   return (
@@ -68,5 +64,4 @@ export const AuthProvider = ({ children }) => {
       {!loading && children}
     </AuthContext.Provider>
   );
-
-};
+}

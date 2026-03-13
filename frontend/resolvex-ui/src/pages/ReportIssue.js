@@ -1,109 +1,89 @@
-import React, { useState, useContext } from "react";
-import { createIssue } from "../services/issueService";
-import { AuthContext } from "../context/AuthContext";
+import React, { useState } from "react";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "../services/firebase";
+import { useAuth } from "../context/AuthContext";
 
-function ReportIssue() {
+const ReportIssue = () => {
 
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser } = useAuth();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-
-  const [loading, setLoading] = useState(false);
+  const [category, setCategory] = useState("Hostel");
 
   const handleSubmit = async (e) => {
-
     e.preventDefault();
-
-    if (!currentUser) {
-      alert("Please login first");
-      return;
-    }
-
-    setLoading(true);
 
     try {
 
-      await createIssue({
+      await addDoc(collection(db, "issues"), {
         title,
         description,
         category,
-        createdBy: currentUser.uid
+        createdBy: currentUser.uid,
+        createdByName: currentUser.displayName,
+        assignedCommittee: category + " Committee",
+        upvotes: 0,
+        status: "pending",
+        createdAt: serverTimestamp(),
       });
-
-      alert("Issue reported successfully!");
 
       setTitle("");
       setDescription("");
-      setCategory("");
+
+      alert("Issue reported successfully!");
 
     } catch (error) {
-
-      alert("Failed to submit issue");
-
+      console.error("Error reporting issue:", error);
     }
-
-    setLoading(false);
-
   };
 
   return (
+    <div className="max-w-xl mx-auto bg-white p-6 rounded shadow">
 
-    <div style={{ padding: "20px" }}>
+      <h2 className="text-2xl font-bold mb-4">Report New Issue</h2>
 
-      <h2>Report Issue</h2>
-
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
         <input
           type="text"
           placeholder="Issue Title"
+          className="border p-2 rounded"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
         />
 
-        <br /><br />
-
         <textarea
-          placeholder="Describe issue"
+          placeholder="Describe the issue"
+          className="border p-2 rounded"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           required
         />
 
-        <br /><br />
-
         <select
+          className="border p-2 rounded"
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          required
         >
-
-          <option value="">Select Category</option>
-          <option value="Hostel">Hostel</option>
-          <option value="Food">Food</option>
-          <option value="Hygiene">Hygiene</option>
-          <option value="Infrastructure">Infrastructure</option>
-          <option value="Discipline">Discipline</option>
-
+          <option>Hostel</option>
+          <option>Food</option>
+          <option>Hygiene</option>
+          <option>Infrastructure</option>
+          <option>Discipline</option>
         </select>
 
-        <br /><br />
-
-        <button type="submit">
-
-          {loading ? "Submitting..." : "Submit Issue"}
-
+        <button
+          type="submit"
+          className="bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700"
+        >
+          Submit Issue
         </button>
 
       </form>
-
     </div>
-
   );
-
-}
+};
 
 export default ReportIssue;

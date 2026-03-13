@@ -1,58 +1,84 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 
+import Login from "./pages/Login";
 import Home from "./pages/Home";
 import ReportIssue from "./pages/ReportIssue";
 import IssueFeed from "./pages/IssueFeed";
-import CommitteeDashboard from "./pages/CommitteeDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import CommitteeDashboard from "./pages/CommitteeDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import Login from "./pages/Login";
 
-import { useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 
-function App() {
+function Layout() {
 
-  const { role } = useAuth();
+  const location = useLocation();
 
-  const getDashboard = () => {
-
-    if (role === "admin") return "/admin-dashboard";
-    if (role === "committee") return "/committee";
-    return "/student-dashboard";
-
-  };
+  const hideNavbar = location.pathname === "/login";
 
   return (
+    <div className="flex">
 
-    <Router>
+      {!hideNavbar && <Navbar />}
 
-      <Navbar />
+      <div className="flex-1 p-8 bg-gray-100 min-h-screen">
 
-      <Routes>
+        <Routes>
 
-        <Route path="/" element={<Navigate to={getDashboard()} />} />
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/report" element={<ReportIssue />} />
+          <Route
+            path="/"
+            element={<ProtectedRoute><Home /></ProtectedRoute>}
+          />
 
-        <Route path="/feed" element={<IssueFeed />} />
+          <Route
+            path="/student-dashboard"
+            element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>}
+          />
 
-        <Route path="/committee" element={<CommitteeDashboard />} />
+          <Route
+            path="/committee"
+            element={<ProtectedRoute><CommitteeDashboard /></ProtectedRoute>}
+          />
 
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
+          <Route
+            path="/admin-dashboard"
+            element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>}
+          />
 
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route
+            path="/report"
+            element={<ProtectedRoute><ReportIssue /></ProtectedRoute>}
+          />
 
-        <Route path="/login" element={<Login />} />
+          <Route
+            path="/feed"
+            element={<ProtectedRoute><IssueFeed /></ProtectedRoute>}
+          />
 
-      </Routes>
+          <Route path="*" element={<Navigate to="/" />} />
 
-    </Router>
+        </Routes>
 
+      </div>
+
+    </div>
   );
+}
 
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Layout />
+      </Router>
+    </AuthProvider>
+  );
 }
 
 export default App;

@@ -1,65 +1,44 @@
 import React from "react";
-import { auth, db } from "../services/firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { auth, googleProvider } from "../services/firebase";
+import { signInWithPopup } from "firebase/auth";
 
-function Login() {
+const Login = () => {
 
-  const loginWithGoogle = async () => {
-
-    const provider = new GoogleAuthProvider();
+  const handleLogin = async () => {
 
     try {
-
-      const result = await signInWithPopup(auth, provider);
-
-      const user = result.user;
-
-      const userRef = doc(db, "users", user.uid);
-
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-
-        await setDoc(userRef, {
-          name: user.displayName,
-          email: user.email,
-          role: "student",
-          createdAt: serverTimestamp()
-        });
-
-        console.log("User created in database");
-
-      } else {
-
-        console.log("User already exists");
-
-      }
-
-      alert("Login successful!");
-
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
-
       console.error("Login error:", error);
-
     }
 
   };
 
   return (
 
-    <div style={{ padding: "20px" }}>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
 
-      <h2>Login to ResolveX</h2>
+      <div className="bg-white p-10 rounded-xl shadow-lg w-96 text-center">
 
-      <button onClick={loginWithGoogle}>
-        Sign in with Google
-      </button>
+        <h1 className="text-3xl font-bold mb-6 text-indigo-600">
+          ResolveX
+        </h1>
+
+        <p className="mb-6 text-gray-600">
+          Preventive Campus Issue Management
+        </p>
+
+        <button
+          onClick={handleLogin}
+          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
+        >
+          Sign in with Google
+        </button>
+
+      </div>
 
     </div>
-
   );
-
-}
+};
 
 export default Login;

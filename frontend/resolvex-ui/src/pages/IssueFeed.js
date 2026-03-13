@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../services/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy
+} from "firebase/firestore";
+
 import IssueCard from "../components/IssueCard";
 
 const IssueFeed = () => {
@@ -24,6 +30,10 @@ const IssueFeed = () => {
 
       setIssues(issueList);
 
+    }, (error) => {
+
+      console.error("Firestore error:", error);
+
     });
 
     return () => unsubscribe();
@@ -37,20 +47,20 @@ const IssueFeed = () => {
 
   return (
 
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto">
 
       <h1 className="text-2xl font-bold mb-6">
-        Campus Issues
+        Issue Feed
       </h1>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
 
         {["All","Hostel","Food","Hygiene","Infrastructure","Discipline"].map((cat) => (
 
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1 rounded-full text-sm ${
+            className={`px-3 py-1 rounded ${
               selectedCategory === cat
                 ? "bg-indigo-600 text-white"
                 : "bg-gray-200"
@@ -65,13 +75,9 @@ const IssueFeed = () => {
 
       <div className="space-y-4">
 
-        {filteredIssues.length === 0 ? (
-          <p className="text-gray-500">No issues found.</p>
-        ) : (
-          filteredIssues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} />
-          ))
-        )}
+        {filteredIssues.map((issue) => (
+          <IssueCard key={issue.id} issue={issue} />
+        ))}
 
       </div>
 

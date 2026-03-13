@@ -1,58 +1,86 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { signOut } from "firebase/auth";
-import { auth } from "../services/firebase";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
-
-  const { currentUser } = useAuth();
+  const { currentUser, role, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
+    <div className="w-64 h-screen bg-gradient-to-b from-indigo-600 to-purple-600 text-white flex flex-col p-6">
 
-    <nav className="bg-white border-b shadow-sm px-6 py-3 flex justify-between items-center">
+      {/* App Title */}
+      <h1 className="text-2xl font-bold mb-10">ResolveX</h1>
 
-      <h1 className="text-xl font-bold text-indigo-600">
-        ResolveX
-      </h1>
+      {/* Navigation Links */}
+      <nav className="flex flex-col gap-4">
 
-      <div className="flex gap-4 text-sm">
+        {role === "student" && (
+          <>
+            <Link to="/student-dashboard" className="hover:text-gray-200">
+              Dashboard
+            </Link>
 
-        <Link to="/">Home</Link>
+            <Link to="/report" className="hover:text-gray-200">
+              Report Issue
+            </Link>
 
-        <Link to="/report">Report Issue</Link>
+            <Link to="/feed" className="hover:text-gray-200">
+              Issue Feed
+            </Link>
+          </>
+        )}
 
-        <Link to="/feed">Issue Feed</Link>
+        {role === "committee" && (
+          <>
+            <Link to="/committee" className="hover:text-gray-200">
+              Committee Dashboard
+            </Link>
 
-        <Link to="/committee">Committee</Link>
+            <Link to="/feed" className="hover:text-gray-200">
+              Issue Feed
+            </Link>
+          </>
+        )}
 
-        <Link to="/admin">Admin Panel</Link>
+        {role === "admin" && (
+          <>
+            <Link to="/admin-dashboard" className="hover:text-gray-200">
+              Admin Dashboard
+            </Link>
 
-        {currentUser ? (
+            <Link to="/feed" className="hover:text-gray-200">
+              Issue Feed
+            </Link>
+          </>
+        )}
 
+      </nav>
+
+      {/* Bottom section */}
+      <div className="mt-auto">
+
+        {currentUser && (
           <button
             onClick={handleLogout}
-            className="text-red-600"
+            className="w-full bg-white text-indigo-600 font-semibold py-2 rounded hover:bg-gray-200 transition"
           >
             Logout
           </button>
-
-        ) : (
-
-          <Link to="/login">Login</Link>
-
         )}
 
       </div>
-
-    </nav>
-
+    </div>
   );
-
 };
 
 export default Navbar;
