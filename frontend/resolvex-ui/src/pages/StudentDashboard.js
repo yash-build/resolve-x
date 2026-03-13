@@ -1,41 +1,92 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+
+import { collection, query, onSnapshot } from "firebase/firestore";
+
+import { db } from "../services/firebase";
 
 const StudentDashboard = () => {
 
+  const [stats, setStats] = useState({
+
+    total: 0,
+
+    pending: 0,
+
+    resolved: 0
+
+  });
+
+  useEffect(() => {
+
+    const q = query(collection(db, "issues"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+
+      const issues = snapshot.docs.map(doc => doc.data());
+
+      const total = issues.length;
+
+      const pending = issues.filter(i => i.status === "pending").length;
+
+      const resolved = issues.filter(i => i.status === "resolved").length;
+
+      setStats({
+        total,
+        pending,
+        resolved
+      });
+
+    });
+
+    return () => unsubscribe();
+
+  }, []);
+
   return (
 
-    <div className="max-w-4xl mx-auto p-6">
+    <div>
 
-      <h1 className="text-2xl font-bold mb-6">
+      <h1 className="text-3xl font-bold mb-6">
         Student Dashboard
       </h1>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-3 gap-6">
 
-        <Link
-          to="/report"
-          className="bg-white shadow rounded-xl p-6 hover:shadow-md"
-        >
-          <h2 className="text-lg font-semibold">
-            Report New Issue
-          </h2>
-          <p className="text-gray-500 mt-2">
-            Submit a complaint or campus problem
-          </p>
-        </Link>
+        <div className="bg-white p-6 rounded shadow text-center">
 
-        <Link
-          to="/feed"
-          className="bg-white shadow rounded-xl p-6 hover:shadow-md"
-        >
-          <h2 className="text-lg font-semibold">
-            View Issue Feed
+          <h2 className="text-gray-500">
+            Total Issues
           </h2>
-          <p className="text-gray-500 mt-2">
-            See all reported issues and upvote
+
+          <p className="text-3xl font-bold">
+            {stats.total}
           </p>
-        </Link>
+
+        </div>
+
+        <div className="bg-white p-6 rounded shadow text-center">
+
+          <h2 className="text-gray-500">
+            Pending
+          </h2>
+
+          <p className="text-3xl font-bold text-yellow-500">
+            {stats.pending}
+          </p>
+
+        </div>
+
+        <div className="bg-white p-6 rounded shadow text-center">
+
+          <h2 className="text-gray-500">
+            Resolved
+          </h2>
+
+          <p className="text-3xl font-bold text-green-600">
+            {stats.resolved}
+          </p>
+
+        </div>
 
       </div>
 

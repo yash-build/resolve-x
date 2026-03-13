@@ -1,40 +1,3 @@
-/*
-========================================================
-ResolveX Main Application Router
-========================================================
-
-This file handles:
-
-• React Router configuration
-• Page routing
-• Layout system
-• Protected routes
-• Sidebar display logic
-• Authentication wrapper
-
-Architecture Overview
-
-AuthProvider
-    ↓
-Router
-    ↓
-Layout System
-    ↓
-Routes
-
-Pages Available:
-
-/login
-/student-dashboard
-/report
-/feed
-/notifications
-/committee
-/admin-dashboard
-
-========================================================
-*/
-
 import React from "react";
 
 import {
@@ -45,52 +8,24 @@ import {
   useLocation
 } from "react-router-dom";
 
-/*
-========================================================
-Context
-========================================================
-*/
-
 import { AuthProvider } from "./context/AuthContext";
 
-/*
-========================================================
-Components
-========================================================
-*/
-
 import Navbar from "./components/Navbar";
-import ProtectedRoute from "./components/ProtectedRoute";
 
-/*
-========================================================
-Pages
-========================================================
-*/
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login from "./pages/Login";
 import StudentDashboard from "./pages/StudentDashboard";
-import CommitteeDashboard from "./pages/CommitteeDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-
 import IssueFeed from "./pages/IssueFeed";
 import ReportIssue from "./pages/ReportIssue";
 import Notifications from "./pages/Notifications";
-
-/*
-========================================================
-Layout Component
-Controls when sidebar appears
-========================================================
-*/
+import CommitteeDashboard from "./pages/CommitteeDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import MyIssues from "./pages/MyIssues";
 
 function Layout() {
 
   const location = useLocation();
-
-  /*
-  Hide sidebar on login page
-  */
 
   const hideNavbar = location.pathname === "/login";
 
@@ -98,24 +33,16 @@ function Layout() {
 
     <div className="flex">
 
-      {/* Sidebar */}
-
       {!hideNavbar && <Navbar />}
-
-      {/* Main Content Area */}
 
       <div className="flex-1 p-8 bg-gray-100 min-h-screen">
 
         <Routes>
 
-          {/* Login Page */}
-
           <Route
             path="/login"
             element={<Login />}
           />
-
-          {/* Student Dashboard */}
 
           <Route
             path="/student-dashboard"
@@ -126,7 +53,14 @@ function Layout() {
             }
           />
 
-          {/* Report Issue */}
+          <Route
+            path="/feed"
+            element={
+              <ProtectedRoute>
+                <IssueFeed />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/report"
@@ -137,19 +71,6 @@ function Layout() {
             }
           />
 
-          {/* Issue Feed */}
-
-          <Route
-            path="/feed"
-            element={
-              <ProtectedRoute>
-                <IssueFeed />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Notifications */}
-
           <Route
             path="/notifications"
             element={
@@ -159,7 +80,14 @@ function Layout() {
             }
           />
 
-          {/* Committee Dashboard */}
+          <Route
+            path="/my-issues"
+            element={
+              <ProtectedRoute>
+                <MyIssues />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/committee"
@@ -170,8 +98,6 @@ function Layout() {
             }
           />
 
-          {/* Admin Dashboard */}
-
           <Route
             path="/admin-dashboard"
             element={
@@ -181,17 +107,8 @@ function Layout() {
             }
           />
 
-          {/* Default Redirect */}
-
           <Route
             path="/"
-            element={<Navigate to="/student-dashboard" />}
-          />
-
-          {/* Fallback Route */}
-
-          <Route
-            path="*"
             element={<Navigate to="/student-dashboard" />}
           />
 
@@ -204,12 +121,6 @@ function Layout() {
   );
 
 }
-
-/*
-========================================================
-Main App Component
-========================================================
-*/
 
 function App() {
 

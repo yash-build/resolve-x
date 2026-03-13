@@ -1,75 +1,195 @@
 import React, { useEffect, useState } from "react";
+
 import {
   collection,
-  onSnapshot,
   query,
-  orderBy
+  orderBy,
+  onSnapshot
 } from "firebase/firestore";
 
 import { db } from "../services/firebase";
+
 import IssueCard from "../components/IssueCard";
+
+const priorityOrder = {
+  critical: 1,
+  high: 2,
+  medium: 3,
+  low: 4
+};
 
 const IssueFeed = () => {
 
   const [issues, setIssues] = useState([]);
-  const [sortBy, setSortBy] = useState("newest");
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   useEffect(() => {
 
-    let q;
+    const issueQuery = query(
+      collection(db, "issues"),
+      orderBy("createdAt", "desc")
+    );
 
-    if (sortBy === "newest") {
-      q = query(collection(db, "issues"), orderBy("createdAt", "desc"));
-    }
+    const unsubscribe = onSnapshot(
 
-    if (sortBy === "oldest") {
-      q = query(collection(db, "issues"), orderBy("createdAt", "asc"));
-    }
+      issueQuery,
 
-    if (sortBy === "mostUpvoted") {
-      q = query(collection(db, "issues"), orderBy("upvotes", "desc"));
-    }
+      (snapshot) => {
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetched = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
 
-      const issueList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+        /*
+        LOCAL PRIORITY SORT
+        */
 
-      setIssues(issueList);
-    });
+        fetched.sort((a, b) => {
+
+          return (
+            priorityOrder[a.priority] -
+            priorityOrder[b.priority]
+          );
+
+        });
+
+        setIssues(fetched);
+
+        setLoading(false);
+
+      },
+
+      (err) => {
+
+        console.error(err);
+
+        setError("Failed to load issues");
+
+        setLoading(false);
+
+      }
+
+    );
 
     return () => unsubscribe();
 
-  }, [sortBy]);
+  }, []);
+
+  /*
+  SEARCH + FILTER
+  */
+
+  const filteredIssues = issues.filter(issue => {
+
+    const matchCategory =
+      categoryFilter === "all" ||
+      issue.category === categoryFilter;
+
+    const matchSearch =
+      issue.title
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      issue.description
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+    return matchCategory && matchSearch;
+
+  });
+
+  if (loading) {
+
+    return (
+      <div className="text-center">
+        Loading issues...
+      </div>
+    );
+
+  }
+
+  if (error) {
+
+    return (
+      <div className="text-center text-red-500">
+        {error}
+      </div>
+    );
+
+  }
 
   return (
 
-    <div>
+    <div className="max-w-5xl mx-auto">
 
-      <div className="flex justify-between items-center mb-6">
+      <h1 className="text-3xl font-bold mb-6">
+        Issue Feed
+      </h1>
 
-        <h1 className="text-2xl font-bold">
-          Issue Feed
-        </h1>
+      <div className="flex gap-4 mb-6">
+
+        <input
+          type="text"
+          placeholder="Search issues"
+          className="border p-2 rounded"
+          value={searchTerm}
+          onChange={(e) =>
+            setSearchTerm(e.target.value)
+          }
+        />
 
         <select
           className="border p-2 rounded"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          value={categoryFilter}
+          onChange={(e) =>
+            setCategoryFilter(e.target.value)
+          }
         >
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
-          <option value="mostUpvoted">Most Upvoted</option>
+
+          <option value="all">
+            All Categories
+          </option>
+
+          <option value="Hostel">
+            Hostel
+          </option>
+
+          <option value="Food">
+            Food
+          </option>
+
+          <option value="Hygiene">
+            Hygiene
+          </option>
+
+          <option value="Infrastructure">
+            Infrastructure
+          </option>
+
+          <option value="Discipline">
+            Discipline
+          </option>
+
         </select>
 
       </div>
 
       <div className="space-y-4">
 
-        {issues.map((issue) => (
-          <IssueCard key={issue.id} issue={issue} />
+        {filteredIssues.map(issue => (
+
+          <IssueCard
+            key={issue.id}
+            issue={issue}
+          />
+
         ))}
 
       </div>
@@ -77,6 +197,7 @@ const IssueFeed = () => {
     </div>
 
   );
+
 };
 
 export default IssueFeed;

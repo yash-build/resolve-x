@@ -3,26 +3,25 @@
 ResolveX Analytics Service
 ========================================================
 
-This service handles all analytics calculations
-for admin dashboards.
+Provides analytics data for the Admin Dashboard.
 
-Analytics Provided:
-
+Includes:
 • Total issues
 • Pending issues
 • Resolved issues
-• Category distribution
+• Category statistics
 • Monthly trends
 
 ========================================================
 */
 
 import { collection, getDocs } from "firebase/firestore";
+
 import { db } from "./firebase";
 
 /*
 ========================================================
-Fetch All Issues
+Fetch all issues
 ========================================================
 */
 
@@ -32,7 +31,7 @@ async function fetchIssues() {
     collection(db, "issues")
   );
 
-  return snapshot.docs.map(doc => ({
+  return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data()
   }));
@@ -64,6 +63,7 @@ export async function getIssueStats() {
     resolved,
     pending
   };
+
 }
 
 /*
@@ -97,7 +97,7 @@ export async function getCategoryStats() {
 
 /*
 ========================================================
-Monthly Issue Trend
+Monthly Issue Trends
 ========================================================
 */
 

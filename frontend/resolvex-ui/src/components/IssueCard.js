@@ -1,45 +1,80 @@
 import React from "react";
-import { doc, updateDoc, increment } from "firebase/firestore";
-import { db } from "../services/firebase";
+
+import {
+  upvoteIssue,
+  resolveIssue
+} from "../services/issueService";
 
 const IssueCard = ({ issue }) => {
 
-  const handleUpvote = async () => {
-    const ref = doc(db, "issues", issue.id);
+  const priorityColors = {
 
-    await updateDoc(ref, {
-      upvotes: increment(1)
-    });
+    low: "bg-gray-200",
+
+    medium: "bg-yellow-300",
+
+    high: "bg-orange-400",
+
+    critical: "bg-red-500 text-white"
+
   };
+
+  const statusColors = {
+
+    pending: "bg-yellow-200",
+
+    resolved: "bg-green-300"
+
+  };
+
+  const createdTime = issue.createdAt
+    ? issue.createdAt.toDate().toLocaleString()
+    : "Unknown time";
 
   return (
 
-    <div className="bg-white p-5 rounded shadow">
+    <div className="bg-white p-6 rounded shadow">
 
-      <h2 className="text-xl font-semibold">
-        {issue.title}
-      </h2>
+      <div className="flex justify-between items-center">
+
+        <h2 className="text-xl font-semibold">
+          {issue.title}
+        </h2>
+
+        <span
+          className={`px-2 py-1 rounded text-sm ${priorityColors[issue.priority]}`}
+        >
+          {issue.priority}
+        </span>
+
+      </div>
 
       <p className="text-gray-600 mt-2">
         {issue.description}
       </p>
 
-      <div className="flex justify-between items-center mt-4">
+      <div className="flex justify-between mt-4 text-sm">
 
-        <span className="text-sm text-gray-500">
+        <span>
           Category: {issue.category}
         </span>
 
-        <span className="text-sm text-gray-500">
-          Status: {issue.status}
+        <span
+          className={`px-2 py-1 rounded ${statusColors[issue.status]}`}
+        >
+          {issue.status}
         </span>
 
       </div>
 
-      <div className="flex justify-between items-center mt-4">
+      <div className="text-xs text-gray-400 mt-2">
+        Reported at: {createdTime}
+      </div>
+
+      <div className="flex justify-between mt-4">
 
         <button
-          onClick={handleUpvote}
+          onClick={() => upvoteIssue(issue.id)}
           className="bg-indigo-600 text-white px-4 py-1 rounded"
         >
           Upvote
@@ -51,8 +86,21 @@ const IssueCard = ({ issue }) => {
 
       </div>
 
+      {issue.status === "pending" && (
+
+        <button
+          onClick={() => resolveIssue(issue.id, issue)}
+          className="mt-4 bg-green-600 text-white px-4 py-2 rounded"
+        >
+          Mark Resolved
+        </button>
+
+      )}
+
     </div>
+
   );
+
 };
 
 export default IssueCard;

@@ -1,68 +1,143 @@
 import React, { useEffect, useState } from "react";
 
 import {
-  getIssueStats,
-  getCategoryStats,
-  getMonthlyStats
-} from "../services/analyticsService";
+  collection,
+  getDocs
+} from "firebase/firestore";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid
-} from "recharts";
+import { db } from "../services/firebase";
 
-const COLORS = [
-  "#6366f1",
-  "#22c55e",
-  "#f59e0b",
-  "#ef4444",
-  "#06b6d4"
-];
+/*
+==============================================================
+Admin Analytics Dashboard
+==============================================================
+
+Displays:
+
+• Total issues
+• Pending issues
+• Resolved issues
+• Committee performance
+• Average resolution times
+
+==============================================================
+*/
 
 const AdminDashboard = () => {
 
   const [stats, setStats] = useState({
+
     total: 0,
-    resolved: 0,
-    pending: 0
+    pending: 0,
+    resolved: 0
+
   });
 
-  const [categoryData, setCategoryData] = useState([]);
-
-  const [monthlyData, setMonthlyData] = useState([]);
+  const [committeeStats, setCommitteeStats] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
+  /*
+  ==============================================================
+  Fetch Issues
+  ============================================================== 
+  */
 
   useEffect(() => {
 
     async function loadAnalytics() {
 
-      try {
+      const snapshot = await getDocs(
+        collection(db, "issues")
+      );
 
-        const basicStats = await getIssueStats();
+      const issues = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-        const categories = await getCategoryStats();
+      const total = issues.length;
 
-        const monthly = await getMonthlyStats();
+      const pending = issues.filter(
+        i => i.status === "pending"
+      ).length;
 
-        setStats(basicStats);
+      const resolved = issues.filter(
+        i => i.status === "resolved"
+      ).length;
 
-        setCategoryData(categories);
+      setStats({
+        total,
+        pending,
+        resolved
+      });
 
-        setMonthlyData(monthly);
+      /*
+      ==========================================================
+      Committee Performance Calculation
+      ==========================================================
+      */
 
-      } catch (error) {
+      const committeeMap = {};
 
-        console.error("Analytics error:", error);
+      issues.forEach(issue => {
 
-      }
+        const committee = issue.assignedCommittee;
+
+        if (!committeeMap[committee]) {
+
+          committeeMap[committee] = {
+
+            name: committee,
+            resolved: 0,
+            pending: 0,
+            totalResolutionTime: 0,
+            resolvedCount: 0
+
+          };
+
+        }
+
+        if (issue.status === "resolved") {
+
+          committeeMap[committee].resolved++;
+
+          if (issue.resolutionTimeHours) {
+
+            committeeMap[committee].totalResolutionTime += issue.resolutionTimeHours;
+
+            committeeMap[committee].resolvedCount++;
+
+          }
+
+        }
+
+        if (issue.status === "pending") {
+
+          committeeMap[committee].pending++;
+
+        }
+
+      });
+
+      const committees = Object.values(committeeMap).map(c => {
+
+        const avgTime = c.resolvedCount
+          ? (c.totalResolutionTime / c.resolvedCount).toFixed(2)
+          : "N/A";
+
+        return {
+
+          name: c.name,
+          resolved: c.resolved,
+          pending: c.pending,
+          avgResolutionHours: avgTime
+
+        };
+
+      });
+
+      setCommitteeStats(committees);
 
       setLoading(false);
 
@@ -76,7 +151,7 @@ const AdminDashboard = () => {
 
     return (
       <div className="text-center">
-        Loading analytics...
+        Loading admin analytics...
       </div>
     );
 
@@ -87,104 +162,94 @@ const AdminDashboard = () => {
     <div className="max-w-6xl mx-auto">
 
       <h1 className="text-3xl font-bold mb-8">
+
         Admin Analytics Dashboard
+
       </h1>
 
-      {/* Stats Cards */}
+      {/* Statistics Cards */}
 
       <div className="grid grid-cols-3 gap-6 mb-10">
 
         <div className="bg-white p-6 rounded shadow text-center">
-          <h2 className="text-lg text-gray-500">
+
+          <h2 className="text-gray-500">
             Total Issues
           </h2>
+
           <p className="text-3xl font-bold">
             {stats.total}
           </p>
+
         </div>
 
         <div className="bg-white p-6 rounded shadow text-center">
-          <h2 className="text-lg text-gray-500">
-            Pending
+
+          <h2 className="text-gray-500">
+            Pending Issues
           </h2>
-          <p className="text-3xl font-bold text-yellow-500">
+
+          <p className="text-3xl font-bold text-yellow-600">
             {stats.pending}
           </p>
+
         </div>
 
         <div className="bg-white p-6 rounded shadow text-center">
-          <h2 className="text-lg text-gray-500">
-            Resolved
+
+          <h2 className="text-gray-500">
+            Resolved Issues
           </h2>
+
           <p className="text-3xl font-bold text-green-600">
             {stats.resolved}
           </p>
+
         </div>
 
       </div>
 
-      {/* Category Chart */}
+      {/* Committee Performance */}
 
-      <div className="bg-white p-6 rounded shadow mb-10">
+      <h2 className="text-2xl font-semibold mb-4">
+        Committee Performance
+      </h2>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Issue Category Distribution
-        </h2>
+      <div className="space-y-4">
 
-        <PieChart width={400} height={300}>
+        {committeeStats.map(committee => (
 
-          <Pie
-            data={categoryData}
-            dataKey="value"
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            label
+          <div
+            key={committee.name}
+            className="bg-white p-6 rounded shadow"
           >
 
-            {categoryData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
-              />
-            ))}
+            <h3 className="text-xl font-bold mb-2">
+              {committee.name}
+            </h3>
 
-          </Pie>
+            <div className="grid grid-cols-3 gap-4">
 
-          <Tooltip />
+              <div>
+                Resolved Issues:
+                <strong> {committee.resolved}</strong>
+              </div>
 
-        </PieChart>
+              <div>
+                Pending Issues:
+                <strong> {committee.pending}</strong>
+              </div>
 
-      </div>
+              <div>
+                Avg Resolution Time:
+                <strong> {committee.avgResolutionHours} hrs</strong>
+              </div>
 
-      {/* Monthly Chart */}
+            </div>
 
-      <div className="bg-white p-6 rounded shadow">
+          </div>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Monthly Issue Trends
-        </h2>
-
-        <BarChart
-          width={600}
-          height={300}
-          data={monthlyData}
-        >
-
-          <CartesianGrid strokeDasharray="3 3" />
-
-          <XAxis dataKey="month" />
-
-          <YAxis />
-
-          <Tooltip />
-
-          <Bar
-            dataKey="issues"
-            fill="#6366f1"
-          />
-
-        </BarChart>
+        ))}
 
       </div>
 

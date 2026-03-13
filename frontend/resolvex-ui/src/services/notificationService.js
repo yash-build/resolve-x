@@ -3,14 +3,13 @@
 ResolveX Notification Service
 ========================================================
 
-Handles all notification related operations.
+Handles all notification related Firestore operations.
 
-This system allows:
-
-• Creating notifications
-• Fetching notifications
-• Marking notifications as read
-• Real-time notification updates
+Features:
+• Create notification
+• Subscribe to user notifications
+• Mark notifications as read
+• Real-time updates
 
 ========================================================
 */

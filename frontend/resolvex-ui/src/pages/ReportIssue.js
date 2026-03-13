@@ -1,12 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
+import {
+  collection,
+  getDocs
+} from "firebase/firestore";
+
+import { db } from "../services/firebase";
+
+import { createIssue } from "../services/issueService";
 
 import { useAuth } from "../context/AuthContext";
 
-import { createIssue, fetchAllIssues } from "../services/issueService";
-
-import { detectPriority } from "../utils/priorityDetector";
-
-import { findSimilarIssues } from "../utils/duplicateDetector";
+import {
+  detectDuplicate
+} from "../utils/duplicateDetector";
 
 const ReportIssue = () => {
 
@@ -18,146 +25,162 @@ const ReportIssue = () => {
 
   const [category, setCategory] = useState("Hostel");
 
-  const [similarIssues, setSimilarIssues] = useState([]);
+  const [existingIssues, setExistingIssues] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
 
   /*
-  ------------------------------------------------
-  Check for duplicate issues
-  ------------------------------------------------
+  ==========================================================
+  LOAD EXISTING ISSUES
+  ==========================================================
   */
 
-  const checkDuplicates = async () => {
+  useEffect(() => {
 
-    if (!title) return;
+    async function fetchIssues() {
 
-    const issues = await fetchAllIssues();
+      const snapshot = await getDocs(
+        collection(db, "issues")
+      );
 
-    const matches = findSimilarIssues(title, issues);
+      const issues = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-    setSimilarIssues(matches);
+      setExistingIssues(issues);
+
+    }
+
+    fetchIssues();
+
+  }, []);
+
+  /*
+  ==========================================================
+  HANDLE TITLE CHANGE
+  ==========================================================
+  */
+
+  const handleTitleChange = (value) => {
+
+    setTitle(value);
+
+    const result = detectDuplicate(
+      value,
+      existingIssues
+    );
+
+    if (result.isDuplicate) {
+
+      setDuplicateWarning(
+        `Similar issue exists: "${result.similarIssue.title}"`
+      );
+
+    }
+
+    else {
+
+      setDuplicateWarning(null);
+
+    }
+
   };
 
   /*
-  ------------------------------------------------
-  Submit Issue
-  ------------------------------------------------
+  ==========================================================
+  SUBMIT ISSUE
+  ==========================================================
   */
 
   const handleSubmit = async (e) => {
 
     e.preventDefault();
 
-    try {
+    await createIssue({
 
-      setLoading(true);
+      title,
+      description,
+      category,
+      createdBy: currentUser.uid,
+      createdByName: currentUser.displayName
 
-      const priority = detectPriority(title, description);
+    });
 
-      const issueData = {
+    setTitle("");
 
-        title,
+    setDescription("");
 
-        description,
+    alert("Issue reported successfully");
 
-        category,
-
-        priority,
-
-        createdBy: currentUser.uid,
-
-        createdByName: currentUser.displayName,
-
-        assignedCommittee: category + " Committee"
-
-      };
-
-      await createIssue(issueData);
-
-      alert("Issue reported successfully!");
-
-      setTitle("");
-      setDescription("");
-      setSimilarIssues([]);
-
-    } catch (error) {
-
-      console.error("Issue creation error:", error);
-
-      alert("Failed to report issue");
-
-    }
-
-    setLoading(false);
   };
 
   return (
 
-    <div className="max-w-xl mx-auto bg-white p-6 rounded shadow">
+    <div className="max-w-xl mx-auto">
 
-      <h2 className="text-2xl font-bold mb-4">
-        Report New Issue
-      </h2>
+      <h1 className="text-3xl font-bold mb-6">
+        Report Issue
+      </h1>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+      >
 
         <input
           type="text"
-          placeholder="Issue Title"
-          className="border p-2 rounded"
+          placeholder="Issue title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={checkDuplicates}
+          onChange={(e) =>
+            handleTitleChange(e.target.value)
+          }
+          className="w-full border p-2 rounded"
           required
         />
 
-        {similarIssues.length > 0 && (
+        {duplicateWarning && (
 
-          <div className="bg-yellow-100 p-3 rounded">
-
-            <p className="font-semibold mb-1">
-              Similar issues already exist:
-            </p>
-
-            {similarIssues.map((issue) => (
-              <p key={issue.id} className="text-sm">
-                • {issue.title}
-              </p>
-            ))}
-
+          <div className="text-red-500 text-sm">
+            {duplicateWarning}
           </div>
 
         )}
 
         <textarea
           placeholder="Describe the issue"
-          className="border p-2 rounded"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) =>
+            setDescription(e.target.value)
+          }
+          className="w-full border p-2 rounded"
+          rows="4"
           required
         />
 
         <select
-          className="border p-2 rounded"
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) =>
+            setCategory(e.target.value)
+          }
+          className="w-full border p-2 rounded"
         >
 
-          <option>Hostel</option>
-          <option>Food</option>
-          <option>Hygiene</option>
-          <option>Infrastructure</option>
-          <option>Discipline</option>
+          <option value="Hostel">Hostel</option>
+          <option value="Food">Food</option>
+          <option value="Hygiene">Hygiene</option>
+          <option value="Infrastructure">Infrastructure</option>
+          <option value="Discipline">Discipline</option>
 
         </select>
 
         <button
           type="submit"
-          disabled={loading}
-          className="bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700"
+          className="bg-indigo-600 text-white px-4 py-2 rounded"
         >
-          {loading ? "Submitting..." : "Submit Issue"}
+
+          Submit Issue
+
         </button>
 
       </form>
