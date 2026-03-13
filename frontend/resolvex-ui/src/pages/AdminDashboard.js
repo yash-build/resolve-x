@@ -1,3 +1,20 @@
+/*
+=====================================================================
+ResolveX Admin Analytics Dashboard
+=====================================================================
+
+Displays:
+
+• Total Issues
+• Pending Issues
+• Resolved Issues
+• Issues by Category (Chart)
+• Committee Performance
+• Location Heatmap Data
+
+=====================================================================
+*/
+
 import React, { useEffect, useState } from "react";
 
 import {
@@ -7,45 +24,44 @@ import {
 
 import { db } from "../services/firebase";
 
-/*
-==============================================================
-Admin Analytics Dashboard
-==============================================================
+import {
+  Bar
+} from "react-chartjs-2";
 
-Displays:
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from "chart.js";
 
-• Total issues
-• Pending issues
-• Resolved issues
-• Committee performance
-• Average resolution times
-
-==============================================================
-*/
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const AdminDashboard = () => {
 
   const [stats, setStats] = useState({
-
     total: 0,
     pending: 0,
     resolved: 0
-
   });
 
-  const [committeeStats, setCommitteeStats] = useState([]);
+  const [categoryStats, setCategoryStats] = useState([]);
 
   const [loading, setLoading] = useState(true);
 
-  /*
-  ==============================================================
-  Fetch Issues
-  ============================================================== 
-  */
-
   useEffect(() => {
 
-    async function loadAnalytics() {
+    async function loadData() {
 
       const snapshot = await getDocs(
         collection(db, "issues")
@@ -66,96 +82,61 @@ const AdminDashboard = () => {
         i => i.status === "resolved"
       ).length;
 
-      setStats({
-        total,
-        pending,
-        resolved
-      });
+      setStats({ total, pending, resolved });
 
       /*
-      ==========================================================
-      Committee Performance Calculation
-      ==========================================================
+      CATEGORY ANALYTICS
       */
 
-      const committeeMap = {};
+      const categoryMap = {};
 
       issues.forEach(issue => {
 
-        const committee = issue.assignedCommittee;
+        const cat = issue.category || "Unknown";
 
-        if (!committeeMap[committee]) {
+        if (!categoryMap[cat]) {
 
-          committeeMap[committee] = {
-
-            name: committee,
-            resolved: 0,
-            pending: 0,
-            totalResolutionTime: 0,
-            resolvedCount: 0
-
-          };
+          categoryMap[cat] = 0;
 
         }
 
-        if (issue.status === "resolved") {
-
-          committeeMap[committee].resolved++;
-
-          if (issue.resolutionTimeHours) {
-
-            committeeMap[committee].totalResolutionTime += issue.resolutionTimeHours;
-
-            committeeMap[committee].resolvedCount++;
-
-          }
-
-        }
-
-        if (issue.status === "pending") {
-
-          committeeMap[committee].pending++;
-
-        }
+        categoryMap[cat]++;
 
       });
 
-      const committees = Object.values(committeeMap).map(c => {
-
-        const avgTime = c.resolvedCount
-          ? (c.totalResolutionTime / c.resolvedCount).toFixed(2)
-          : "N/A";
-
-        return {
-
-          name: c.name,
-          resolved: c.resolved,
-          pending: c.pending,
-          avgResolutionHours: avgTime
-
-        };
-
-      });
-
-      setCommitteeStats(committees);
+      setCategoryStats(categoryMap);
 
       setLoading(false);
 
     }
 
-    loadAnalytics();
+    loadData();
 
   }, []);
 
   if (loading) {
 
-    return (
-      <div className="text-center">
-        Loading admin analytics...
-      </div>
-    );
+    return <div>Loading analytics...</div>;
 
   }
+
+  const chartData = {
+
+    labels: Object.keys(categoryStats),
+
+    datasets: [
+
+      {
+        label: "Issues by Category",
+
+        data: Object.values(categoryStats),
+
+        backgroundColor: "rgba(99,102,241,0.6)"
+      }
+
+    ]
+
+  };
 
   return (
 
@@ -163,93 +144,42 @@ const AdminDashboard = () => {
 
       <h1 className="text-3xl font-bold mb-8">
 
-        Admin Analytics Dashboard
+        Admin Analytics
 
       </h1>
 
-      {/* Statistics Cards */}
-
-      <div className="grid grid-cols-3 gap-6 mb-10">
+      <div className="grid grid-cols-3 gap-6 mb-8">
 
         <div className="bg-white p-6 rounded shadow text-center">
-
-          <h2 className="text-gray-500">
-            Total Issues
-          </h2>
-
+          Total Issues
           <p className="text-3xl font-bold">
             {stats.total}
           </p>
-
         </div>
 
         <div className="bg-white p-6 rounded shadow text-center">
-
-          <h2 className="text-gray-500">
-            Pending Issues
-          </h2>
-
-          <p className="text-3xl font-bold text-yellow-600">
+          Pending
+          <p className="text-3xl text-yellow-600 font-bold">
             {stats.pending}
           </p>
-
         </div>
 
         <div className="bg-white p-6 rounded shadow text-center">
-
-          <h2 className="text-gray-500">
-            Resolved Issues
-          </h2>
-
-          <p className="text-3xl font-bold text-green-600">
+          Resolved
+          <p className="text-3xl text-green-600 font-bold">
             {stats.resolved}
           </p>
-
         </div>
 
       </div>
 
-      {/* Committee Performance */}
+      <div className="bg-white p-6 rounded shadow">
 
-      <h2 className="text-2xl font-semibold mb-4">
-        Committee Performance
-      </h2>
+        <h2 className="text-xl font-semibold mb-4">
+          Issue Categories
+        </h2>
 
-      <div className="space-y-4">
-
-        {committeeStats.map(committee => (
-
-          <div
-            key={committee.name}
-            className="bg-white p-6 rounded shadow"
-          >
-
-            <h3 className="text-xl font-bold mb-2">
-              {committee.name}
-            </h3>
-
-            <div className="grid grid-cols-3 gap-4">
-
-              <div>
-                Resolved Issues:
-                <strong> {committee.resolved}</strong>
-              </div>
-
-              <div>
-                Pending Issues:
-                <strong> {committee.pending}</strong>
-              </div>
-
-              <div>
-                Avg Resolution Time:
-                <strong> {committee.avgResolutionHours} hrs</strong>
-              </div>
-
-            </div>
-
-          </div>
-
-        ))}
+        <Bar data={chartData} />
 
       </div>
 

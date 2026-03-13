@@ -1,68 +1,136 @@
+/*
+======================================================================
+ResolveX Committee Dashboard
+======================================================================
+
+Purpose:
+Allow committees to manage issues assigned to them.
+
+Features:
+
+• View assigned issues
+• Resolve issues
+• Real-time updates
+• Priority awareness
+
+======================================================================
+*/
+
 import React, { useEffect, useState } from "react";
+
+import {
+  collection,
+  query,
+  where,
+  onSnapshot
+} from "firebase/firestore";
+
 import { db } from "../services/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+
 import IssueCard from "../components/IssueCard";
 
 const CommitteeDashboard = () => {
 
+  /*
+  ================================================================
+  STATE VARIABLES
+  ================================================================
+  */
+
   const [issues, setIssues] = useState([]);
-  const [committee, setCommittee] = useState("Mess Committee");
+
+  const [loading, setLoading] = useState(true);
+
+  const committeeName = "Mess Committee"; // Example committee
+
+  /*
+  ================================================================
+  LOAD ASSIGNED ISSUES
+  ================================================================
+  */
 
   useEffect(() => {
 
-    const unsubscribe = onSnapshot(
+    const issueQuery = query(
+
       collection(db, "issues"),
+
+      where("assignedCommittee", "==", committeeName)
+
+    );
+
+    const unsubscribe = onSnapshot(
+
+      issueQuery,
+
       (snapshot) => {
 
-        const data = snapshot.docs.map((doc) => ({
+        const fetchedIssues = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
 
-        setIssues(data);
+        setIssues(fetchedIssues);
 
-      },
-      (error) => {
-
-        console.error("Firestore error:", error);
+        setLoading(false);
 
       }
+
     );
 
     return () => unsubscribe();
 
   }, []);
 
-  const filteredIssues = issues.filter(
-    (issue) => issue.assignedCommittee === committee
-  );
+  /*
+  ================================================================
+  LOADING STATE
+  ================================================================
+  */
+
+  if (loading) {
+
+    return (
+      <div className="text-center mt-10">
+        Loading committee tasks...
+      </div>
+    );
+
+  }
+
+  /*
+  ================================================================
+  DASHBOARD UI
+  ================================================================
+  */
 
   return (
 
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto">
 
-      <h1 className="text-2xl font-bold mb-6">
-        Committee Dashboard
+      <h1 className="text-3xl font-bold mb-6">
+
+        {committeeName} Dashboard
+
       </h1>
 
-      <select
-        className="border px-3 py-2 rounded mb-6"
-        value={committee}
-        onChange={(e) => setCommittee(e.target.value)}
-      >
+      {issues.length === 0 && (
 
-        <option>Mess Committee</option>
-        <option>Hostel Committee</option>
-        <option>Maintenance Committee</option>
-        <option>Sanitation Committee</option>
-        <option>Disciplinary Committee</option>
+        <div className="text-gray-500">
+          No assigned issues.
+        </div>
 
-      </select>
+      )}
 
       <div className="space-y-4">
 
-        {filteredIssues.map((issue) => (
-          <IssueCard key={issue.id} issue={issue} />
+        {issues.map(issue => (
+
+          <IssueCard
+            key={issue.id}
+            issue={issue}
+          />
+
         ))}
 
       </div>

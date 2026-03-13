@@ -1,39 +1,46 @@
 /*
-==============================================================
+======================================================================
 ResolveX Issue Service
-==============================================================
-
-This service manages all issue related operations.
+======================================================================
 
 Responsibilities:
 
-1. Create new issue
-2. Upvote issue
-3. Resolve issue
-4. Attach committee automatically
-5. Track resolution time
-6. Notify issue creator
+1. Create issue
+2. Detect priority automatically
+3. Route issue to committee
+4. Upvote issue
+5. Resolve issue
+6. Track resolution time
+7. Escalate critical issues to administrators
+8. Send notifications
 
-==============================================================
+======================================================================
 */
 
 import {
+
   collection,
   addDoc,
   updateDoc,
   doc,
   increment,
-  serverTimestamp
+  serverTimestamp,
+  getDocs,
+  query,
+  where
+
 } from "firebase/firestore";
 
 import { db } from "./firebase";
 
+import { detectPriority } from "../utils/priorityDetector";
+
 import { createNotification } from "./notificationService";
 
 /*
-==============================================================
-Committee Routing Logic
-==============================================================
+======================================================================
+Committee Routing
+======================================================================
 */
 
 function determineCommittee(category) {
@@ -59,17 +66,61 @@ function determineCommittee(category) {
   }
 
   return "General Committee";
+
 }
 
 /*
-==============================================================
+======================================================================
+Escalation Logic
+======================================================================
+
+If an issue is critical, notify all admins.
+
+======================================================================
+*/
+
+async function escalateCriticalIssue(issueData) {
+
+  const adminQuery = query(
+    collection(db, "users"),
+    where("role", "==", "admin")
+  );
+
+  const snapshot = await getDocs(adminQuery);
+
+  const admins = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  for (let admin of admins) {
+
+    await createNotification({
+
+      userId: admin.id,
+
+      message: `🚨 CRITICAL ISSUE REPORTED: ${issueData.title}`
+
+    });
+
+  }
+
+}
+
+/*
+======================================================================
 Create Issue
-==============================================================
+======================================================================
 */
 
 export async function createIssue(issueData) {
 
   const committee = determineCommittee(issueData.category);
+
+  const priority = detectPriority(
+    issueData.title,
+    issueData.description
+  );
 
   const issueDocument = {
 
@@ -77,7 +128,7 @@ export async function createIssue(issueData) {
 
     assignedCommittee: committee,
 
-    priority: "medium",
+    priority: priority,
 
     upvotes: 0,
 
@@ -92,17 +143,33 @@ export async function createIssue(issueData) {
   };
 
   const docRef = await addDoc(
+
     collection(db, "issues"),
+
     issueDocument
+
   );
 
+  /*
+  ---------------------------------------------------------------
+  Escalate Critical Issues
+  ---------------------------------------------------------------
+  */
+
+  if (priority === "critical") {
+
+    await escalateCriticalIssue(issueData);
+
+  }
+
   return docRef.id;
+
 }
 
 /*
-==============================================================
+======================================================================
 Upvote Issue
-==============================================================
+======================================================================
 */
 
 export async function upvoteIssue(issueId) {
@@ -118,9 +185,9 @@ export async function upvoteIssue(issueId) {
 }
 
 /*
-==============================================================
+======================================================================
 Resolve Issue
-==============================================================
+======================================================================
 */
 
 export async function resolveIssue(issueId, issueData) {
@@ -151,17 +218,9 @@ export async function resolveIssue(issueId, issueData) {
 
   });
 
-  /*
-  ------------------------------------------------------------
-  Send notification to issue creator
-  ------------------------------------------------------------
-  */
-
   await createNotification({
 
     userId: issueData.createdBy,
-
-    issueId: issueId,
 
     message: `Your issue "${issueData.title}" has been resolved.`
 
