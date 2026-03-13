@@ -1,61 +1,190 @@
 import React, { useEffect, useState } from "react";
-import { db } from "../services/firebase";
-import { collection, getDocs } from "firebase/firestore";
+
+import {
+  getIssueStats,
+  getCategoryStats,
+  getMonthlyStats
+} from "../services/analyticsService";
+
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid
+} from "recharts";
+
+const COLORS = [
+  "#6366f1",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#06b6d4"
+];
 
 const AdminDashboard = () => {
 
-  const [totalIssues, setTotalIssues] = useState(0);
-  const [resolvedIssues, setResolvedIssues] = useState(0);
-  const [pendingIssues, setPendingIssues] = useState(0);
+  const [stats, setStats] = useState({
+    total: 0,
+    resolved: 0,
+    pending: 0
+  });
+
+  const [categoryData, setCategoryData] = useState([]);
+
+  const [monthlyData, setMonthlyData] = useState([]);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
 
-    const fetchData = async () => {
+    async function loadAnalytics() {
 
-      const snapshot = await getDocs(collection(db, "issues"));
+      try {
 
-      const issues = snapshot.docs.map((doc) => doc.data());
+        const basicStats = await getIssueStats();
 
-      setTotalIssues(issues.length);
+        const categories = await getCategoryStats();
 
-      const resolved = issues.filter(
-        (issue) => issue.status === "resolved"
-      );
+        const monthly = await getMonthlyStats();
 
-      setResolvedIssues(resolved.length);
+        setStats(basicStats);
 
-      setPendingIssues(issues.length - resolved.length);
+        setCategoryData(categories);
 
-    };
+        setMonthlyData(monthly);
 
-    fetchData();
+      } catch (error) {
+
+        console.error("Analytics error:", error);
+
+      }
+
+      setLoading(false);
+
+    }
+
+    loadAnalytics();
 
   }, []);
 
+  if (loading) {
+
+    return (
+      <div className="text-center">
+        Loading analytics...
+      </div>
+    );
+
+  }
+
   return (
 
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto">
 
-      <h1 className="text-2xl font-bold mb-6">
-        Admin Dashboard
+      <h1 className="text-3xl font-bold mb-8">
+        Admin Analytics Dashboard
       </h1>
 
-      <div className="grid grid-cols-3 gap-6">
+      {/* Stats Cards */}
 
-        <div className="bg-white shadow rounded-xl p-6">
-          <h2 className="text-gray-500">Total Issues</h2>
-          <p className="text-3xl font-bold">{totalIssues}</p>
+      <div className="grid grid-cols-3 gap-6 mb-10">
+
+        <div className="bg-white p-6 rounded shadow text-center">
+          <h2 className="text-lg text-gray-500">
+            Total Issues
+          </h2>
+          <p className="text-3xl font-bold">
+            {stats.total}
+          </p>
         </div>
 
-        <div className="bg-white shadow rounded-xl p-6">
-          <h2 className="text-gray-500">Resolved</h2>
-          <p className="text-3xl font-bold">{resolvedIssues}</p>
+        <div className="bg-white p-6 rounded shadow text-center">
+          <h2 className="text-lg text-gray-500">
+            Pending
+          </h2>
+          <p className="text-3xl font-bold text-yellow-500">
+            {stats.pending}
+          </p>
         </div>
 
-        <div className="bg-white shadow rounded-xl p-6">
-          <h2 className="text-gray-500">Pending</h2>
-          <p className="text-3xl font-bold">{pendingIssues}</p>
+        <div className="bg-white p-6 rounded shadow text-center">
+          <h2 className="text-lg text-gray-500">
+            Resolved
+          </h2>
+          <p className="text-3xl font-bold text-green-600">
+            {stats.resolved}
+          </p>
         </div>
+
+      </div>
+
+      {/* Category Chart */}
+
+      <div className="bg-white p-6 rounded shadow mb-10">
+
+        <h2 className="text-xl font-semibold mb-4">
+          Issue Category Distribution
+        </h2>
+
+        <PieChart width={400} height={300}>
+
+          <Pie
+            data={categoryData}
+            dataKey="value"
+            cx="50%"
+            cy="50%"
+            outerRadius={100}
+            label
+          >
+
+            {categoryData.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={COLORS[index % COLORS.length]}
+              />
+            ))}
+
+          </Pie>
+
+          <Tooltip />
+
+        </PieChart>
+
+      </div>
+
+      {/* Monthly Chart */}
+
+      <div className="bg-white p-6 rounded shadow">
+
+        <h2 className="text-xl font-semibold mb-4">
+          Monthly Issue Trends
+        </h2>
+
+        <BarChart
+          width={600}
+          height={300}
+          data={monthlyData}
+        >
+
+          <CartesianGrid strokeDasharray="3 3" />
+
+          <XAxis dataKey="month" />
+
+          <YAxis />
+
+          <Tooltip />
+
+          <Bar
+            dataKey="issues"
+            fill="#6366f1"
+          />
+
+        </BarChart>
 
       </div>
 

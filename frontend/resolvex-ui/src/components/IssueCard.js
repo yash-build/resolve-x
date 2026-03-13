@@ -1,82 +1,58 @@
 import React from "react";
+import { doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "../services/firebase";
-import { doc, updateDoc } from "firebase/firestore";
-import { upvoteIssue } from "../services/issueService";
 
 const IssueCard = ({ issue }) => {
 
-  const handleUpvote = () => {
-    upvoteIssue(issue.id);
-  };
+  const handleUpvote = async () => {
+    const ref = doc(db, "issues", issue.id);
 
-  const resolveIssue = async () => {
-
-    const issueRef = doc(db, "issues", issue.id);
-
-    await updateDoc(issueRef, {
-      status: "resolved"
+    await updateDoc(ref, {
+      upvotes: increment(1)
     });
-
   };
 
   return (
 
-    <div className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition">
+    <div className="bg-white p-5 rounded shadow">
 
-      <h3 className="text-lg font-semibold">
+      <h2 className="text-xl font-semibold">
         {issue.title}
-      </h3>
+      </h2>
 
       <p className="text-gray-600 mt-2">
         {issue.description}
       </p>
 
-      <div className="flex flex-wrap gap-2 mt-4">
+      <div className="flex justify-between items-center mt-4">
 
-        <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-          {issue.category}
+        <span className="text-sm text-gray-500">
+          Category: {issue.category}
         </span>
 
-        <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full">
-          {issue.assignedCommittee}
-        </span>
-
-        <span className="text-xs bg-gray-100 px-3 py-1 rounded-full">
-          {issue.status}
+        <span className="text-sm text-gray-500">
+          Status: {issue.status}
         </span>
 
       </div>
 
-      <p className="text-xs text-gray-500 mt-2">
-        Reported by {issue.createdByName}
-      </p>
-
-      <div className="flex gap-3 mt-4">
+      <div className="flex justify-between items-center mt-4">
 
         <button
           onClick={handleUpvote}
-          className="bg-indigo-600 text-white px-3 py-2 rounded text-sm"
+          className="bg-indigo-600 text-white px-4 py-1 rounded"
         >
-          Upvote ({issue.upvotes})
+          Upvote
         </button>
 
-        {issue.status !== "resolved" && (
-
-          <button
-            onClick={resolveIssue}
-            className="bg-green-600 text-white px-3 py-2 rounded text-sm"
-          >
-            Resolve
-          </button>
-
-        )}
+        <span>
+          👍 {issue.upvotes}
+        </span>
 
       </div>
 
     </div>
-
   );
-
 };
 
 export default IssueCard;

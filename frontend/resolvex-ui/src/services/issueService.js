@@ -1,63 +1,180 @@
-import { db } from "./firebase";
+/*
+========================================================
+ResolveX Issue Service
+========================================================
+
+Handles all issue related operations.
+
+========================================================
+*/
+
 import {
   collection,
   addDoc,
-  serverTimestamp,
   updateDoc,
   doc,
-  increment
+  increment,
+  serverTimestamp,
+  getDocs,
+  query,
+  orderBy,
+  onSnapshot
 } from "firebase/firestore";
 
-const getCommitteeFromCategory = (category) => {
+import { db } from "./firebase";
 
-  const mapping = {
-    Food: "Mess Committee",
-    Hostel: "Hostel Committee",
-    Infrastructure: "Maintenance Committee",
-    Hygiene: "Sanitation Committee",
-    Discipline: "Disciplinary Committee"
+import { createNotification } from "./notificationService";
+
+/*
+========================================================
+Create Issue
+========================================================
+*/
+
+export async function createIssue(issueData) {
+
+  const issue = {
+
+    ...issueData,
+
+    upvotes: 0,
+
+    status: "pending",
+
+    createdAt: serverTimestamp(),
+
+    resolvedAt: null
+
   };
 
-  return mapping[category] || "General Committee";
-};
+  const docRef = await addDoc(
+    collection(db, "issues"),
+    issue
+  );
 
-export const createIssue = async (issueData, user) => {
+  return docRef.id;
+}
 
-  try {
+/*
+========================================================
+Fetch All Issues
+========================================================
+*/
 
-    const committee = getCommitteeFromCategory(issueData.category);
+export async function fetchAllIssues() {
 
-    const issue = {
-      title: issueData.title,
-      description: issueData.description,
-      category: issueData.category,
-      createdBy: user.uid,
-      createdByName: user.displayName || "Anonymous",
-      upvotes: 0,
-      status: "pending",
-      assignedCommittee: committee,
-      createdAt: serverTimestamp()
-    };
+  const snapshot = await getDocs(
+    collection(db, "issues")
+  );
 
-    await addDoc(collection(db, "issues"), issue);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 
-  } catch (error) {
-    console.error("Error creating issue:", error);
+}
+
+/*
+========================================================
+Realtime Issue Feed
+========================================================
+*/
+
+export function subscribeToIssues(sortOption, callback) {
+
+  let issueQuery;
+
+  if (sortOption === "newest") {
+
+    issueQuery = query(
+      collection(db, "issues"),
+      orderBy("createdAt", "desc")
+    );
+
   }
-};
 
-export const upvoteIssue = async (issueId) => {
+  else if (sortOption === "oldest") {
 
-  try {
+    issueQuery = query(
+      collection(db, "issues"),
+      orderBy("createdAt", "asc")
+    );
 
-    const issueRef = doc(db, "issues", issueId);
-
-    await updateDoc(issueRef, {
-      upvotes: increment(1)
-    });
-
-  } catch (error) {
-    console.error("Error upvoting issue:", error);
   }
 
-};
+  else {
+
+    issueQuery = query(
+      collection(db, "issues"),
+      orderBy("upvotes", "desc")
+    );
+
+  }
+
+  const unsubscribe = onSnapshot(issueQuery, (snapshot) => {
+
+    const issues = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    callback(issues);
+
+  });
+
+  return unsubscribe;
+}
+
+/*
+========================================================
+Upvote Issue
+========================================================
+*/
+
+export async function upvoteIssue(issueId) {
+
+  const issueRef = doc(db, "issues", issueId);
+
+  await updateDoc(issueRef, {
+
+    upvotes: increment(1)
+
+  });
+
+}
+
+/*
+========================================================
+Resolve Issue
+========================================================
+*/
+
+export async function resolveIssue(issueId, issueData) {
+
+  const issueRef = doc(db, "issues", issueId);
+
+  await updateDoc(issueRef, {
+
+    status: "resolved",
+
+    resolvedAt: serverTimestamp()
+
+  });
+
+  /*
+  ----------------------------------------------
+  Send notification to student
+  ----------------------------------------------
+  */
+
+  await createNotification({
+
+    userId: issueData.createdBy,
+
+    issueId: issueId,
+
+    message: `Your issue "${issueData.title}" has been resolved.`
+
+  });
+
+}

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { db } from "../services/firebase";
 import {
   collection,
   onSnapshot,
@@ -7,19 +6,29 @@ import {
   orderBy
 } from "firebase/firestore";
 
+import { db } from "../services/firebase";
 import IssueCard from "../components/IssueCard";
 
 const IssueFeed = () => {
 
   const [issues, setIssues] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
 
-    const q = query(
-      collection(db, "issues"),
-      orderBy("createdAt", "desc")
-    );
+    let q;
+
+    if (sortBy === "newest") {
+      q = query(collection(db, "issues"), orderBy("createdAt", "desc"));
+    }
+
+    if (sortBy === "oldest") {
+      q = query(collection(db, "issues"), orderBy("createdAt", "asc"));
+    }
+
+    if (sortBy === "mostUpvoted") {
+      q = query(collection(db, "issues"), orderBy("upvotes", "desc"));
+    }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
 
@@ -29,53 +38,37 @@ const IssueFeed = () => {
       }));
 
       setIssues(issueList);
-
-    }, (error) => {
-
-      console.error("Firestore error:", error);
-
     });
 
     return () => unsubscribe();
 
-  }, []);
-
-  const filteredIssues =
-    selectedCategory === "All"
-      ? issues
-      : issues.filter((issue) => issue.category === selectedCategory);
+  }, [sortBy]);
 
   return (
 
-    <div className="max-w-3xl mx-auto">
+    <div>
 
-      <h1 className="text-2xl font-bold mb-6">
-        Issue Feed
-      </h1>
+      <div className="flex justify-between items-center mb-6">
 
-      <div className="flex gap-2 mb-6 flex-wrap">
+        <h1 className="text-2xl font-bold">
+          Issue Feed
+        </h1>
 
-        {["All","Hostel","Food","Hygiene","Infrastructure","Discipline"].map((cat) => (
-
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1 rounded ${
-              selectedCategory === cat
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-200"
-            }`}
-          >
-            {cat}
-          </button>
-
-        ))}
+        <select
+          className="border p-2 rounded"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="mostUpvoted">Most Upvoted</option>
+        </select>
 
       </div>
 
       <div className="space-y-4">
 
-        {filteredIssues.map((issue) => (
+        {issues.map((issue) => (
           <IssueCard key={issue.id} issue={issue} />
         ))}
 
@@ -84,7 +77,6 @@ const IssueFeed = () => {
     </div>
 
   );
-
 };
 
 export default IssueFeed;
