@@ -1,310 +1,485 @@
-/*
-=====================================================================
-ResolveX Admin Analytics Dashboard
-=====================================================================
-
-This dashboard provides administrators with deep insight into
-campus operations.
-
-Analytics Included:
-
-1. Total issues
-2. Pending issues
-3. Resolved issues
-4. Issue category chart
-5. Campus location heatmap
-6. Committee performance
-7. Issue distribution insights
-
-=====================================================================
-*/
-
 import React, { useEffect, useState } from "react";
+
+import { db } from "../services/firebase";
 
 import {
   collection,
   getDocs
 } from "firebase/firestore";
 
-import { db } from "../services/firebase";
+import HeatmapPanel from "../components/HeatmapPanel";
+import AnnouncementForm from "../components/AnnouncementForm";
 
 import {
-  Bar
-} from "react-chartjs-2";
+  calculateCommitteeAnalytics,
+  calculateCategoryDistribution
+} from "../services/analyticsEngine";
 
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-} from "chart.js";
+import { calculateLocationHeatmap } from "../services/locationHeatmapEngine";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+/*
+============================================================
+RESOLVEX ADMIN DASHBOARD
+============================================================
+
+Purpose
+-------
+
+The Admin Dashboard provides a centralized control panel
+for monitoring campus operational issues.
+
+Admins can observe:
+
+• Total issue activity
+• Committee performance
+• Issue category distribution
+• Campus problem hotspots
+• Post campus announcements
+
+Architecture
+------------
+
+Firestore Issues
+        ↓
+Analytics Engine
+        ↓
+Dashboard Metrics
+        ↓
+Admin Interface
+
+Future upgrades:
+
+• AI predictive alerts
+• smart issue prioritization
+• automated escalation
+• GPT analytics assistant
+*/
 
 const AdminDashboard = () => {
 
   /*
-  ===============================================================
-  STATE VARIABLES
-  ===============================================================
+  ============================================================
+  STATE MANAGEMENT
+  ============================================================
   */
 
-  const [stats, setStats] = useState({
+  const [issues, setIssues] = useState([]);
 
-    total: 0,
-    pending: 0,
-    resolved: 0
+  const [committeeAnalytics, setCommitteeAnalytics] =
+    useState([]);
 
-  });
+  const [categoryDistribution, setCategoryDistribution] =
+    useState({});
 
-  const [categoryStats, setCategoryStats] = useState({});
+  const [heatmapData, setHeatmapData] =
+    useState([]);
 
-  const [locationStats, setLocationStats] = useState([]);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [loading, setLoading] = useState(true);
+  const [error, setError] =
+    useState("");
 
   /*
-  ===============================================================
-  LOAD DATA FROM FIRESTORE
-  ===============================================================
+  ============================================================
+  FETCH ISSUES FROM FIRESTORE
+  ============================================================
   */
 
   useEffect(() => {
 
-    async function loadAnalytics() {
+    const fetchIssues = async () => {
 
-      const snapshot = await getDocs(
-        collection(db, "issues")
-      );
+      try {
 
-      const issues = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+        setLoading(true);
 
-      /*
-      ------------------------------------------------------------
-      BASIC STATISTICS
-      ------------------------------------------------------------
-      */
+        const snapshot = await getDocs(
+          collection(db, "issues")
+        );
 
-      const total = issues.length;
-
-      const pending = issues.filter(
-        issue => issue.status === "pending"
-      ).length;
-
-      const resolved = issues.filter(
-        issue => issue.status === "resolved"
-      ).length;
-
-      setStats({
-        total,
-        pending,
-        resolved
-      });
-
-      /*
-      ------------------------------------------------------------
-      CATEGORY ANALYTICS
-      ------------------------------------------------------------
-      */
-
-      const categoryMap = {};
-
-      issues.forEach(issue => {
-
-        const category = issue.category || "Unknown";
-
-        if (!categoryMap[category]) {
-
-          categoryMap[category] = 0;
-
-        }
-
-        categoryMap[category]++;
-
-      });
-
-      setCategoryStats(categoryMap);
-
-      /*
-      ------------------------------------------------------------
-      LOCATION HEATMAP DATA
-      ------------------------------------------------------------
-      */
-
-      const locationMap = {};
-
-      issues.forEach(issue => {
-
-        const location = issue.location || "Unknown";
-
-        if (!locationMap[location]) {
-
-          locationMap[location] = 0;
-
-        }
-
-        locationMap[location]++;
-
-      });
-
-      const locationData = Object.entries(locationMap)
-        .sort((a,b)=>b[1]-a[1])
-        .map(([location,count])=>({
-          location,
-          count
+        const issuesData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data()
         }));
 
-      setLocationStats(locationData);
+        setIssues(issuesData);
 
-      setLoading(false);
+        /*
+        ===============================================
+        CALCULATE COMMITTEE ANALYTICS
+        ===============================================
+        */
 
-    }
+        const committeeStats =
+          calculateCommitteeAnalytics(issuesData);
 
-    loadAnalytics();
+        setCommitteeAnalytics(committeeStats);
+
+        /*
+        ===============================================
+        CALCULATE CATEGORY DISTRIBUTION
+        ===============================================
+        */
+
+        const categoryStats =
+          calculateCategoryDistribution(issuesData);
+
+        setCategoryDistribution(categoryStats);
+
+        /*
+        ===============================================
+        CALCULATE CAMPUS HEATMAP DATA
+        ===============================================
+        */
+
+        const heatmapStats =
+          calculateLocationHeatmap(issuesData);
+
+        setHeatmapData(heatmapStats);
+
+      } catch (err) {
+
+        console.error("Admin dashboard error:", err);
+
+        setError(
+          "Failed to load dashboard analytics."
+        );
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+    fetchIssues();
 
   }, []);
 
   /*
-  ===============================================================
+  ============================================================
+  SYSTEM OVERVIEW METRICS
+  ============================================================
+  */
+
+  const totalIssues =
+    issues.length;
+
+  const resolvedIssues =
+    issues.filter(
+      (issue) => issue.status === "resolved"
+    ).length;
+
+  const pendingIssues =
+    issues.filter(
+      (issue) => issue.status === "pending"
+    ).length;
+
+  const resolutionRate =
+    totalIssues === 0
+      ? 0
+      : (
+          (resolvedIssues / totalIssues) * 100
+        ).toFixed(1);
+
+  /*
+  ============================================================
   LOADING STATE
-  ===============================================================
+  ============================================================
   */
 
   if (loading) {
 
     return (
-      <div className="text-center mt-10">
-        Loading analytics...
+
+      <div className="p-8">
+
+        <h1 className="text-2xl font-bold">
+
+          Loading ResolveX Admin Dashboard...
+
+        </h1>
+
       </div>
+
     );
 
   }
 
   /*
-  ===============================================================
-  CHART DATA
-  ===============================================================
+  ============================================================
+  ERROR STATE
+  ============================================================
   */
 
-  const chartData = {
+  if (error) {
 
-    labels: Object.keys(categoryStats),
+    return (
 
-    datasets: [
+      <div className="p-8">
 
-      {
-        label: "Issues by Category",
+        <div className="bg-red-100 border border-red-400 text-red-700 p-4 rounded">
 
-        data: Object.values(categoryStats),
+          {error}
 
-        backgroundColor: "rgba(99,102,241,0.6)"
+        </div>
 
-      }
+      </div>
 
-    ]
+    );
 
-  };
+  }
 
   /*
-  ===============================================================
-  UI RENDER
-  ===============================================================
+  ============================================================
+  DASHBOARD USER INTERFACE
+  ============================================================
   */
 
   return (
 
-    <div className="max-w-6xl mx-auto">
+    <div className="p-8 space-y-10">
 
-      <h1 className="text-3xl font-bold mb-8">
+      {/* PAGE HEADER */}
 
-        Admin Analytics Dashboard
+      <h1 className="text-3xl font-bold">
+
+        ResolveX Admin Dashboard
 
       </h1>
 
-      {/* STATISTICS CARDS */}
+      {/* =====================================================
+          SYSTEM OVERVIEW
+      ===================================================== */}
 
-      <div className="grid grid-cols-3 gap-6 mb-10">
+      <div>
 
-        <div className="bg-white p-6 rounded shadow text-center">
-          <h2>Total Issues</h2>
-          <p className="text-3xl font-bold">
-            {stats.total}
-          </p>
-        </div>
+        <h2 className="text-2xl font-semibold mb-4">
 
-        <div className="bg-white p-6 rounded shadow text-center">
-          <h2>Pending</h2>
-          <p className="text-3xl text-yellow-600 font-bold">
-            {stats.pending}
-          </p>
-        </div>
+          System Overview
 
-        <div className="bg-white p-6 rounded shadow text-center">
-          <h2>Resolved</h2>
-          <p className="text-3xl text-green-600 font-bold">
-            {stats.resolved}
-          </p>
+        </h2>
+
+        <div className="grid grid-cols-4 gap-6">
+
+          <div className="bg-white shadow p-4 rounded">
+
+            <h3 className="text-lg font-semibold">
+              Total Issues
+            </h3>
+
+            <p className="text-3xl">
+              {totalIssues}
+            </p>
+
+          </div>
+
+          <div className="bg-white shadow p-4 rounded">
+
+            <h3 className="text-lg font-semibold">
+              Pending Issues
+            </h3>
+
+            <p className="text-3xl">
+              {pendingIssues}
+            </p>
+
+          </div>
+
+          <div className="bg-white shadow p-4 rounded">
+
+            <h3 className="text-lg font-semibold">
+              Resolved Issues
+            </h3>
+
+            <p className="text-3xl">
+              {resolvedIssues}
+            </p>
+
+          </div>
+
+          <div className="bg-white shadow p-4 rounded">
+
+            <h3 className="text-lg font-semibold">
+              Resolution Rate
+            </h3>
+
+            <p className="text-3xl">
+              {resolutionRate}%
+            </p>
+
+          </div>
+
         </div>
 
       </div>
 
-      {/* CATEGORY CHART */}
+      {/* =====================================================
+          ANNOUNCEMENT SYSTEM
+      ===================================================== */}
 
-      <div className="bg-white p-6 rounded shadow mb-10">
+      <div>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Issues by Category
-        </h2>
-
-        <Bar data={chartData} />
+        <AnnouncementForm />
 
       </div>
 
-      {/* LOCATION HEATMAP */}
+      {/* =====================================================
+          COMMITTEE PERFORMANCE ANALYTICS
+      ===================================================== */}
 
-      <div className="bg-white p-6 rounded shadow">
+      <div>
 
-        <h2 className="text-xl font-semibold mb-4">
+        <h2 className="text-2xl font-semibold mb-4">
 
-          Campus Issue Hotspots
+          Committee Performance
 
         </h2>
 
-        <div className="space-y-3">
+        <table className="w-full border bg-white">
 
-          {locationStats.map(loc => (
+          <thead>
 
-            <div
-              key={loc.location}
-              className="flex justify-between border-b pb-2"
-            >
+            <tr className="bg-gray-200">
 
-              <span>{loc.location}</span>
+              <th className="p-3 border">
+                Committee
+              </th>
 
-              <span className="font-bold">
+              <th className="p-3 border">
+                Total Issues
+              </th>
 
-                {loc.count} issues
+              <th className="p-3 border">
+                Resolved
+              </th>
 
-              </span>
+              <th className="p-3 border">
+                Avg Resolution Time (days)
+              </th>
 
-            </div>
+              <th className="p-3 border">
+                Efficiency Score
+              </th>
 
-          ))}
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {committeeAnalytics.map((item) => (
+
+              <tr key={item.committee}>
+
+                <td className="border p-2">
+                  {item.committee}
+                </td>
+
+                <td className="border p-2">
+                  {item.totalIssues}
+                </td>
+
+                <td className="border p-2">
+                  {item.resolvedIssues}
+                </td>
+
+                <td className="border p-2">
+                  {item.avgResolutionTime}
+                </td>
+
+                <td className="border p-2">
+                  {item.efficiencyScore}%
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      {/* =====================================================
+          ISSUE CATEGORY DISTRIBUTION
+      ===================================================== */}
+
+      <div>
+
+        <h2 className="text-2xl font-semibold mb-4">
+
+          Issue Category Distribution
+
+        </h2>
+
+        <div className="grid grid-cols-4 gap-6">
+
+          {Object.entries(categoryDistribution).map(
+            ([category, count]) => (
+
+              <div
+                key={category}
+                className="bg-gray-100 p-4 rounded shadow"
+              >
+
+                <h3 className="font-semibold text-lg">
+
+                  {category}
+
+                </h3>
+
+                <p className="text-2xl">
+
+                  {count}
+
+                </p>
+
+                <p className="text-sm text-gray-600">
+
+                  issues reported
+
+                </p>
+
+              </div>
+
+            )
+          )}
 
         </div>
+
+      </div>
+
+      {/* =====================================================
+          CAMPUS ISSUE HEATMAP
+      ===================================================== */}
+
+      <div>
+
+        <HeatmapPanel heatmapData={heatmapData} />
+
+      </div>
+
+      {/* =====================================================
+          DEBUG PANEL
+      ===================================================== */}
+
+      <div className="text-sm text-gray-500">
+
+        <p>
+          Issues Loaded: {issues.length}
+        </p>
+
+        <p>
+          Committees Tracked: {committeeAnalytics.length}
+        </p>
+
+        <p>
+          Heatmap Locations: {heatmapData.length}
+        </p>
 
       </div>
 

@@ -1,120 +1,95 @@
-// src/services/firebase.js
-
 /*
-===========================================================
-ResolveX Firebase Configuration
-Production Ready Setup
-===========================================================
+==================================================
+RESOLVEX FIREBASE SERVICE
+==================================================
 
-This file initializes and exports all Firebase services used
-throughout the ResolveX platform.
+Handles:
 
-Services Included:
+• Firebase initialization
+• Authentication
+• Firestore database
+• Google login
+• Firebase storage
 
-• Firebase App Initialization
-• Firestore Database
-• Firebase Authentication
-• Google Authentication Provider
-• Firebase Storage (future proofing)
-• Centralized Firebase Export Layer
-
-This architecture ensures:
-
-✔ Clean imports across the app
-✔ Scalability for new Firebase services
-✔ Maintainable project structure
-✔ Startup-grade engineering practices
-
-===========================================================
+Analytics removed to prevent local runtime errors.
 */
 
 import { initializeApp } from "firebase/app";
 
-import {
-  getAuth,
-  GoogleAuthProvider
-} from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
-import {
-  getFirestore
-} from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 
-import {
-  getStorage
-} from "firebase/storage";
+import { getStorage } from "firebase/storage";
 
 /*
-===========================================================
-Firebase Configuration
-Loaded from environment variables
-===========================================================
+==================================================
+FIREBASE CONFIG
+==================================================
 */
 
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  apiKey: "AIzaSyCjE55naQqS_RYXNVaBoFYI4jiERy5kxTg",
 
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  authDomain: "resolvex-60dc7.firebaseapp.com",
 
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  projectId: "resolvex-60dc7",
 
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  storageBucket: "resolvex-60dc7.appspot.com",
 
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  messagingSenderId: "990924004969",
 
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+  appId: "1:990924004969:web:b3d8889767d6f415effc6c"
 };
 
 /*
-===========================================================
-Initialize Firebase App
-===========================================================
+==================================================
+INITIALIZE FIREBASE
+==================================================
 */
 
 const app = initializeApp(firebaseConfig);
 
 /*
-===========================================================
-Initialize Firebase Services
-===========================================================
+==================================================
+AUTHENTICATION
+==================================================
 */
 
-// Authentication
-const auth = getAuth(app);
-
-// Firestore Database
-const db = getFirestore(app);
-
-// Firebase Storage (for future features like images)
-const storage = getStorage(app);
+export const auth = getAuth(app);
 
 /*
-===========================================================
-Authentication Providers
-===========================================================
+==================================================
+GOOGLE LOGIN PROVIDER
+==================================================
 */
 
-// Google Login Provider
-const googleProvider = new GoogleAuthProvider();
-
-/*
-Optional Google Provider Configurations
-These improve the login experience
-*/
+export const googleProvider = new GoogleAuthProvider();
 
 googleProvider.setCustomParameters({
   prompt: "select_account"
 });
 
 /*
-===========================================================
-Exports
-===========================================================
+==================================================
+FIRESTORE DATABASE
+==================================================
 */
 
-export {
-  app,
-  auth,
-  db,
-  storage,
-  googleProvider
-};
+export const db = getFirestore(app);
+
+/*
+==================================================
+FIREBASE STORAGE
+==================================================
+*/
+
+export const storage = getStorage(app);
+
+/*
+==================================================
+EXPORT APP
+==================================================
+*/
+
+export default app;

@@ -1,202 +1,511 @@
 import React, { useEffect, useState } from "react";
 
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot
-} from "firebase/firestore";
-
 import { db } from "../services/firebase";
+
+import {
+collection,
+onSnapshot
+} from "firebase/firestore";
 
 import IssueCard from "../components/IssueCard";
 
-const priorityOrder = {
-  critical: 1,
-  high: 2,
-  medium: 3,
-  low: 4
-};
+import {
+sortIssuesByPriority
+} from "../services/priorityEngine";
+
+/*
+==========================================================
+RESOLVEX CAMPUS ISSUE FEED
+==========================================================
+
+Purpose
+-------
+
+Displays all campus issues reported by students.
+
+Features
+--------
+
+• Smart issue prioritization
+• Real-time updates
+• Search functionality
+• Category filtering
+• Status filtering
+• Sorting options
+• Issue statistics
+
+Architecture
+------------
+
+Firestore Issues
+        ↓
+Priority Engine
+        ↓
+Filtering / Sorting
+        ↓
+Issue Feed UI
+*/
 
 const IssueFeed = () => {
 
-  const [issues, setIssues] = useState([]);
+/*
+==========================================================
+STATE MANAGEMENT
+==========================================================
+*/
 
-  const [loading, setLoading] = useState(true);
+const [issues, setIssues] = useState([]);
 
-  const [error, setError] = useState(null);
+const [filteredIssues, setFilteredIssues] = useState([]);
 
-  const [searchTerm, setSearchTerm] = useState("");
+const [loading, setLoading] = useState(true);
 
-  const [categoryFilter, setCategoryFilter] = useState("all");
+const [error, setError] = useState("");
 
-  useEffect(() => {
+const [searchTerm, setSearchTerm] = useState("");
 
-    const issueQuery = query(
-      collection(db, "issues"),
-      orderBy("createdAt", "desc")
-    );
+const [categoryFilter, setCategoryFilter] = useState("all");
 
-    const unsubscribe = onSnapshot(
+const [statusFilter, setStatusFilter] = useState("all");
 
-      issueQuery,
+const [sortMode, setSortMode] = useState("priority");
 
-      (snapshot) => {
+/*
+==========================================================
+FETCH ISSUES (REALTIME)
+==========================================================
+*/
 
-        const fetched = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+useEffect(() => {
 
-        /*
-        LOCAL PRIORITY SORT
-        */
+const unsubscribe = onSnapshot(
 
-        fetched.sort((a, b) => {
+collection(db, "issues"),
 
-          return (
-            priorityOrder[a.priority] -
-            priorityOrder[b.priority]
-          );
+(snapshot) => {
 
-        });
+try {
 
-        setIssues(fetched);
+const issuesData = snapshot.docs.map((doc) => ({
 
-        setLoading(false);
+id: doc.id,
+...doc.data()
 
-      },
+}));
 
-      (err) => {
+setIssues(issuesData);
 
-        console.error(err);
+setLoading(false);
 
-        setError("Failed to load issues");
+} catch (err) {
 
-        setLoading(false);
+console.error("Issue feed error:", err);
 
-      }
+setError("Failed to load issues.");
 
-    );
+}
 
-    return () => unsubscribe();
+}
 
-  }, []);
+);
 
-  /*
-  SEARCH + FILTER
-  */
+return () => unsubscribe();
 
-  const filteredIssues = issues.filter(issue => {
+}, []);
 
-    const matchCategory =
-      categoryFilter === "all" ||
-      issue.category === categoryFilter;
+/*
+==========================================================
+FILTER + SORT ISSUES
+==========================================================
+*/
 
-    const matchSearch =
-      issue.title
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      issue.description
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase());
+useEffect(() => {
 
-    return matchCategory && matchSearch;
+let result = [...issues];
 
-  });
+/*
+---------------------------------------
+SEARCH FILTER
+---------------------------------------
+*/
 
-  if (loading) {
+if (searchTerm) {
 
-    return (
-      <div className="text-center">
-        Loading issues...
-      </div>
-    );
+result = result.filter((issue) =>
 
-  }
+issue.title
+?.toLowerCase()
+.includes(searchTerm.toLowerCase()) ||
 
-  if (error) {
+issue.description
+?.toLowerCase()
+.includes(searchTerm.toLowerCase())
 
-    return (
-      <div className="text-center text-red-500">
-        {error}
-      </div>
-    );
+);
 
-  }
+}
 
-  return (
+/*
+---------------------------------------
+CATEGORY FILTER
+---------------------------------------
+*/
 
-    <div className="max-w-5xl mx-auto">
+if (categoryFilter !== "all") {
 
-      <h1 className="text-3xl font-bold mb-6">
-        Issue Feed
-      </h1>
+result = result.filter(
 
-      <div className="flex gap-4 mb-6">
+(issue) => issue.category === categoryFilter
 
-        <input
-          type="text"
-          placeholder="Search issues"
-          className="border p-2 rounded"
-          value={searchTerm}
-          onChange={(e) =>
-            setSearchTerm(e.target.value)
-          }
-        />
+);
 
-        <select
-          className="border p-2 rounded"
-          value={categoryFilter}
-          onChange={(e) =>
-            setCategoryFilter(e.target.value)
-          }
-        >
+}
 
-          <option value="all">
-            All Categories
-          </option>
+/*
+---------------------------------------
+STATUS FILTER
+---------------------------------------
+*/
 
-          <option value="Hostel">
-            Hostel
-          </option>
+if (statusFilter !== "all") {
 
-          <option value="Food">
-            Food
-          </option>
+result = result.filter(
 
-          <option value="Hygiene">
-            Hygiene
-          </option>
+(issue) => issue.status === statusFilter
 
-          <option value="Infrastructure">
-            Infrastructure
-          </option>
+);
 
-          <option value="Discipline">
-            Discipline
-          </option>
+}
 
-        </select>
+/*
+---------------------------------------
+SORTING
+---------------------------------------
+*/
 
-      </div>
+if (sortMode === "priority") {
 
-      <div className="space-y-4">
+result = sortIssuesByPriority(result);
 
-        {filteredIssues.map(issue => (
+}
 
-          <IssueCard
-            key={issue.id}
-            issue={issue}
-          />
+if (sortMode === "newest") {
 
-        ))}
+result.sort((a, b) =>
 
-      </div>
+b.createdAt?.seconds - a.createdAt?.seconds
 
-    </div>
+);
 
-  );
+}
+
+if (sortMode === "upvotes") {
+
+result.sort((a, b) =>
+
+(b.upvotes || 0) - (a.upvotes || 0)
+
+);
+
+}
+
+setFilteredIssues(result);
+
+}, [issues, searchTerm, categoryFilter, statusFilter, sortMode]);
+
+/*
+==========================================================
+ISSUE STATISTICS
+==========================================================
+*/
+
+const totalIssues = issues.length;
+
+const pendingIssues = issues.filter(
+(issue) => issue.status === "pending"
+).length;
+
+const resolvedIssues = issues.filter(
+(issue) => issue.status === "resolved"
+).length;
+
+/*
+==========================================================
+LOADING STATE
+==========================================================
+*/
+
+if (loading) {
+
+return (
+
+<div className="p-8">
+
+<h1 className="text-xl font-bold">
+Loading Issue Feed...
+</h1>
+
+</div>
+
+);
+
+}
+
+/*
+==========================================================
+ERROR STATE
+==========================================================
+*/
+
+if (error) {
+
+return (
+
+<div className="p-8">
+
+<div className="bg-red-100 border border-red-400 text-red-700 p-4 rounded">
+
+{error}
+
+</div>
+
+</div>
+
+);
+
+}
+
+/*
+==========================================================
+ISSUE FEED UI
+==========================================================
+*/
+
+return (
+
+<div className="p-8 space-y-8">
+
+{/* PAGE HEADER */}
+
+<div>
+
+<h1 className="text-3xl font-bold">
+
+Campus Issue Feed
+
+</h1>
+
+<p className="text-gray-600">
+
+Issues are automatically ranked based on
+priority, upvotes, severity, and age.
+
+</p>
+
+</div>
+
+{/* =====================================================
+ISSUE STATISTICS
+===================================================== */}
+
+<div className="grid grid-cols-3 gap-6">
+
+<div className="bg-white shadow p-4 rounded">
+
+<h3 className="font-semibold">
+Total Issues
+</h3>
+
+<p className="text-2xl">
+{totalIssues}
+</p>
+
+</div>
+
+<div className="bg-white shadow p-4 rounded">
+
+<h3 className="font-semibold">
+Pending Issues
+</h3>
+
+<p className="text-2xl">
+{pendingIssues}
+</p>
+
+</div>
+
+<div className="bg-white shadow p-4 rounded">
+
+<h3 className="font-semibold">
+Resolved Issues
+</h3>
+
+<p className="text-2xl">
+{resolvedIssues}
+</p>
+
+</div>
+
+</div>
+
+{/* =====================================================
+SEARCH + FILTER PANEL
+===================================================== */}
+
+<div className="bg-white shadow p-6 rounded space-y-4">
+
+<h2 className="text-xl font-semibold">
+
+Search & Filter Issues
+
+</h2>
+
+{/* SEARCH */}
+
+<input
+type="text"
+placeholder="Search issues..."
+value={searchTerm}
+onChange={(e) =>
+setSearchTerm(e.target.value)
+}
+className="w-full border p-2 rounded"
+/>
+
+<div className="grid grid-cols-3 gap-4">
+
+{/* CATEGORY FILTER */}
+
+<select
+value={categoryFilter}
+onChange={(e) =>
+setCategoryFilter(e.target.value)
+}
+className="border p-2 rounded"
+>
+
+<option value="all">
+All Categories
+</option>
+
+<option value="Hostel">
+Hostel
+</option>
+
+<option value="Food">
+Food
+</option>
+
+<option value="Infrastructure">
+Infrastructure
+</option>
+
+<option value="Hygiene">
+Hygiene
+</option>
+
+<option value="Discipline">
+Discipline
+</option>
+
+</select>
+
+{/* STATUS FILTER */}
+
+<select
+value={statusFilter}
+onChange={(e) =>
+setStatusFilter(e.target.value)
+}
+className="border p-2 rounded"
+>
+
+<option value="all">
+All Status
+</option>
+
+<option value="pending">
+Pending
+</option>
+
+<option value="resolved">
+Resolved
+</option>
+
+</select>
+
+{/* SORT MODE */}
+
+<select
+value={sortMode}
+onChange={(e) =>
+setSortMode(e.target.value)
+}
+className="border p-2 rounded"
+>
+
+<option value="priority">
+Sort by Priority
+</option>
+
+<option value="newest">
+Newest Issues
+</option>
+
+<option value="upvotes">
+Most Upvoted
+</option>
+
+</select>
+
+</div>
+
+</div>
+
+{/* =====================================================
+ISSUE LIST
+===================================================== */}
+
+<div className="space-y-4">
+
+{filteredIssues.length === 0 ? (
+
+<div className="bg-gray-100 p-6 rounded">
+
+<p>No issues found.</p>
+
+</div>
+
+) : (
+
+filteredIssues.map((issue) => (
+
+<IssueCard
+key={issue.id}
+issue={issue}
+/>
+
+))
+
+)}
+
+</div>
+
+{/* =====================================================
+DEBUG PANEL
+===================================================== */}
+
+<div className="text-sm text-gray-500">
+
+<p>Total Loaded Issues: {issues.length}</p>
+
+<p>Filtered Issues: {filteredIssues.length}</p>
+
+</div>
+
+</div>
+
+);
 
 };
 

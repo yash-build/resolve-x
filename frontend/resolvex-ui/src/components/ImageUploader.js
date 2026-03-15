@@ -1,94 +1,107 @@
 import React, { useState } from "react";
 
 /*
-=====================================================
-ResolveX Image Uploader
-=====================================================
+==========================================
+RESOLVEX IMAGE UPLOADER COMPONENT
+==========================================
 
-Features
+Features:
 
-• Max 2 images
-• Image preview
-• Remove image
-• Validation
-=====================================================
+• select images
+• max 2 images
+• preview images
+• remove images
+• validation
 */
 
-function ImageUploader({ onImagesSelected }) {
+const MAX_IMAGES = 2;
+
+const ImageUploader = ({ onImagesChange }) => {
 
   const [images, setImages] = useState([]);
 
+  /* ===============================
+     HANDLE FILE SELECT
+  =============================== */
 
+  const handleFileChange = (event) => {
 
-  const handleImageChange = (e) => {
+    const files = Array.from(event.target.files);
 
-    const files = Array.from(e.target.files);
-
-    if (files.length + images.length > 2) {
-
-      alert("Maximum 2 images allowed");
-
+    if (images.length + files.length > MAX_IMAGES) {
+      alert("Maximum 2 images allowed.");
       return;
     }
 
-    const updated = [...images, ...files];
+    const updatedImages = [...images, ...files];
 
-    setImages(updated);
+    setImages(updatedImages);
 
-    onImagesSelected(updated);
+    if (onImagesChange) {
+      onImagesChange(updatedImages);
+    }
+
   };
 
-
+  /* ===============================
+     REMOVE IMAGE
+  =============================== */
 
   const removeImage = (index) => {
 
-    const updated = images.filter((_, i) => i !== index);
+    const updatedImages = images.filter(
+      (_, i) => i !== index
+    );
 
-    setImages(updated);
+    setImages(updatedImages);
 
-    onImagesSelected(updated);
+    if (onImagesChange) {
+      onImagesChange(updatedImages);
+    }
+
   };
-
-
 
   return (
 
-    <div className="mt-4">
+    <div className="space-y-4">
 
-      <label className="block font-medium mb-2">
-        Upload Issue Images (max 2)
-      </label>
+      {/* Upload Button */}
 
       <input
         type="file"
         accept="image/*"
         multiple
-        onChange={handleImageChange}
-        className="mb-3"
+        onChange={handleFileChange}
+        className="block w-full text-sm text-gray-500
+        file:mr-4 file:py-2 file:px-4
+        file:rounded file:border-0
+        file:text-sm file:font-semibold
+        file:bg-blue-50 file:text-blue-700
+        hover:file:bg-blue-100"
       />
 
+      {/* Preview Images */}
 
+      <div className="grid grid-cols-2 gap-4">
 
-      {/* Preview Grid */}
+        {images.map((image, index) => (
 
-      <div className="grid grid-cols-2 gap-3">
-
-        {images.map((img, index) => (
-
-          <div key={index} className="relative">
+          <div
+            key={index}
+            className="relative border rounded-lg overflow-hidden"
+          >
 
             <img
-              src={URL.createObjectURL(img)}
+              src={URL.createObjectURL(image)}
               alt="preview"
-              className="rounded shadow w-full h-32 object-cover"
+              className="w-full h-32 object-cover"
             />
 
             <button
-              type="button"
               onClick={() => removeImage(index)}
-              className="absolute top-1 right-1 bg-red-500 text-white px-2 rounded"
+              className="absolute top-1 right-1 bg-red-500 text-white text-xs px-2 py-1 rounded"
             >
-              ✕
+              Remove
             </button>
 
           </div>
@@ -98,8 +111,8 @@ function ImageUploader({ onImagesSelected }) {
       </div>
 
     </div>
-
   );
-}
+
+};
 
 export default ImageUploader;

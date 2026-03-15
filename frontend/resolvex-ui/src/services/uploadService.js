@@ -1,88 +1,95 @@
-/*
-=====================================================
-ResolveX Upload Service
-=====================================================
-
-Handles image uploads to Firebase Storage.
-
-Features
-
-• Upload images
-• Limit to 2 files
-• Generate unique filenames
-• Return image URLs
-• Track upload progress
-
-=====================================================
-*/
-
 import { storage } from "./firebase";
 import {
   ref,
-  uploadBytesResumable,
+  uploadBytes,
   getDownloadURL
 } from "firebase/storage";
 
+/*
+==========================================
+UPLOAD ISSUE IMAGES SERVICE
+==========================================
 
+Handles all image uploads for ResolveX.
 
-/* =========================================
-Upload Single Image
-========================================= */
+Features:
+• max 2 images
+• file validation
+• size validation
+• Firebase Storage upload
+• download URL return
+• production error handling
+*/
 
-export const uploadImage = (file, userId) => {
+const MAX_IMAGES = 2;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-  return new Promise((resolve, reject) => {
+export const uploadIssueImages = async (files, issueId) => {
 
-    const timestamp = Date.now();
+  try {
 
-    const storageRef = ref(
-      storage,
-      `issues/${userId}/${timestamp}_${file.name}`
-    );
+    if (!files || files.length === 0) {
+      return [];
+    }
 
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    if (files.length > MAX_IMAGES) {
+      throw new Error("Maximum 2 images allowed");
+    }
 
-    uploadTask.on(
-      "state_changed",
+    const uploadedUrls = [];
 
-      (snapshot) => {
-        const progress =
-          (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+    for (let i = 0; i < files.length; i++) {
 
-        console.log("Upload progress:", progress);
-      },
+      const file = files[i];
 
-      (error) => {
-        reject(error);
-      },
+      /* =========================
+         FILE TYPE VALIDATION
+      ========================= */
 
-      async () => {
-
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-        resolve(downloadURL);
+      if (!file.type.startsWith("image/")) {
+        throw new Error("Only image files are allowed");
       }
-    );
-  });
-};
 
+      /* =========================
+         FILE SIZE VALIDATION
+      ========================= */
 
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error("Image must be smaller than 5MB");
+      }
 
-/* =========================================
-Upload Multiple Images (Max 2)
-========================================= */
+      /* =========================
+         STORAGE PATH
+      ========================= */
 
-export const uploadIssueImages = async (files, userId) => {
+      const storageRef = ref(
+        storage,
+        `issues/${issueId}/${Date.now()}_${file.name}`
+      );
 
-  const urls = [];
+      /* =========================
+         UPLOAD FILE
+      ========================= */
 
-  for (const file of files) {
+      const snapshot = await uploadBytes(storageRef, file);
 
-    const url = await uploadImage(file, userId);
+      /* =========================
+         GET DOWNLOAD URL
+      ========================= */
 
-    urls.push(url);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      uploadedUrls.push(downloadURL);
+
+    }
+
+    return uploadedUrls;
+
+  } catch (error) {
+
+    console.error("Image Upload Error:", error);
+
+    throw error;
   }
-
-  return urls;
 
 };

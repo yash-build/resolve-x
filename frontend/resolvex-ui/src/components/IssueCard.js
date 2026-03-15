@@ -1,101 +1,284 @@
+
+/*
+=========================================================
+ResolveX Issue Card Component
+=========================================================
+
+Displays a single issue in the Issue Feed.
+
+Features
+--------
+• Issue title and description
+• Category badge
+• Severity indicator
+• Upvote system
+• Resolve button
+• Priority score display
+• Image previews
+• Timestamp formatting
+
+Used in:
+IssueFeed.js
+MyIssues.js
+CommitteeDashboard.js
+=========================================================
+*/
+
 import React from "react";
 
 import {
-  upvoteIssue,
-  resolveIssue
-} from "../services/issueService";
+  doc,
+  updateDoc,
+  increment
+} from "firebase/firestore";
+
+import { db } from "../services/firebase";
+
+/*
+=========================================================
+Helper: Format Firestore Timestamp
+=========================================================
+*/
+
+function formatTime(timestamp) {
+  if (!timestamp) return "Unknown time";
+
+  if (timestamp.seconds) {
+    return new Date(timestamp.seconds * 1000).toLocaleString();
+  }
+
+  return new Date(timestamp).toLocaleString();
+}
+
+/*
+=========================================================
+Helper: Category Badge Colors
+=========================================================
+*/
+
+function getCategoryColor(category) {
+  const colors = {
+    Hostel: "bg-indigo-500",
+    Food: "bg-pink-500",
+    Hygiene: "bg-teal-500",
+    Infrastructure: "bg-blue-500",
+    Discipline: "bg-gray-600"
+  };
+
+  return colors[category] || "bg-gray-400";
+}
+
+/*
+=========================================================
+Helper: Severity Badge Colors
+=========================================================
+*/
+
+function getSeverityColor(severity) {
+  const level = Number(severity);
+
+  if (level >= 4) return "bg-red-500 text-white";
+  if (level === 3) return "bg-orange-500 text-white";
+  if (level === 2) return "bg-yellow-400 text-black";
+
+  return "bg-green-400 text-black";
+}
+
+/*
+=========================================================
+Main Issue Card Component
+=========================================================
+*/
 
 const IssueCard = ({ issue }) => {
 
-  const priorityColors = {
+  /*
+  -------------------------------------------------------
+  Upvote Issue
+  -------------------------------------------------------
+  */
 
-    low: "bg-gray-200",
+  const handleUpvote = async () => {
 
-    medium: "bg-yellow-300",
+    try {
 
-    high: "bg-orange-400",
+      const issueRef = doc(db, "issues", issue.id);
 
-    critical: "bg-red-500 text-white"
+      await updateDoc(issueRef, {
+        upvotes: increment(1)
+      });
+
+    } catch (error) {
+
+      console.error("Upvote error:", error);
+
+    }
 
   };
 
-  const statusColors = {
 
-    pending: "bg-yellow-200",
+  /*
+  -------------------------------------------------------
+  Mark Issue Resolved
+  -------------------------------------------------------
+  */
 
-    resolved: "bg-green-300"
+  const handleResolve = async () => {
+
+    try {
+
+      const issueRef = doc(db, "issues", issue.id);
+
+      await updateDoc(issueRef, {
+        status: "resolved"
+      });
+
+    } catch (error) {
+
+      console.error("Resolve error:", error);
+
+    }
 
   };
 
-  const createdTime = issue.createdAt
-    ? issue.createdAt.toDate().toLocaleString()
-    : "Unknown time";
 
   return (
 
-    <div className="bg-white p-6 rounded shadow">
+    <div className="bg-white shadow rounded-lg p-5 space-y-4">
 
-      <div className="flex justify-between items-center">
+      {/* =========================================
+      Header
+      ========================================= */}
 
-        <h2 className="text-xl font-semibold">
-          {issue.title}
-        </h2>
+      <div className="flex justify-between items-start">
+
+        <div>
+
+          <h3 className="text-lg font-semibold">
+            {issue.title}
+          </h3>
+
+          <p className="text-sm text-gray-500">
+            {issue.createdByName || "Student"}
+          </p>
+
+        </div>
 
         <span
-          className={`px-2 py-1 rounded text-sm ${priorityColors[issue.priority]}`}
+          className={`text-xs px-3 py-1 rounded text-white ${getCategoryColor(issue.category)}`}
         >
-          {issue.priority}
+          {issue.category || "General"}
         </span>
 
       </div>
 
-      <p className="text-gray-600 mt-2">
+
+      {/* =========================================
+      Description
+      ========================================= */}
+
+      <p className="text-gray-700">
         {issue.description}
       </p>
 
-      <div className="flex justify-between mt-4 text-sm">
 
-        <span>
-          Category: {issue.category}
-        </span>
+      {/* =========================================
+      Image Preview
+      ========================================= */}
+
+      {issue.images && issue.images.length > 0 && (
+
+        <div className="flex gap-3 overflow-x-auto">
+
+          {issue.images.map((img, index) => (
+
+            <img
+              key={index}
+              src={img}
+              alt="Issue"
+              className="w-32 h-24 object-cover rounded"
+            />
+
+          ))}
+
+        </div>
+
+      )}
+
+
+      {/* =========================================
+      Metadata
+      ========================================= */}
+
+      <div className="flex flex-wrap gap-3 text-sm">
 
         <span
-          className={`px-2 py-1 rounded ${statusColors[issue.status]}`}
+          className={`px-2 py-1 rounded ${getSeverityColor(issue.severity)}`}
         >
-          {issue.status}
+          Severity: {issue.severity || 1}
+        </span>
+
+        <span className="px-2 py-1 bg-gray-200 rounded">
+          Upvotes: {issue.upvotes || 0}
+        </span>
+
+        {issue.priorityScore !== undefined && (
+          <span className="px-2 py-1 bg-purple-200 rounded">
+            Priority: {issue.priorityScore.toFixed(2)}
+          </span>
+        )}
+
+        <span className="px-2 py-1 bg-gray-100 rounded">
+          {formatTime(issue.createdAt)}
         </span>
 
       </div>
 
-      <div className="text-xs text-gray-400 mt-2">
-        Reported at: {createdTime}
-      </div>
 
-      <div className="flex justify-between mt-4">
+      {/* =========================================
+      Actions
+      ========================================= */}
+
+      <div className="flex gap-3">
 
         <button
-          onClick={() => upvoteIssue(issue.id)}
-          className="bg-indigo-600 text-white px-4 py-1 rounded"
+          onClick={handleUpvote}
+          className="bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700"
         >
           Upvote
         </button>
 
-        <span>
-          👍 {issue.upvotes}
-        </span>
+        {issue.status !== "resolved" && (
+
+          <button
+            onClick={handleResolve}
+            className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700"
+          >
+            Mark Resolved
+          </button>
+
+        )}
 
       </div>
 
-      {issue.status === "pending" && (
 
-        <button
-          onClick={() => resolveIssue(issue.id, issue)}
-          className="mt-4 bg-green-600 text-white px-4 py-2 rounded"
+      {/* =========================================
+      Status
+      ========================================= */}
+
+      <div>
+
+        <span
+          className={`text-xs px-2 py-1 rounded ${
+            issue.status === "resolved"
+              ? "bg-green-200"
+              : "bg-yellow-200"
+          }`}
         >
-          Mark Resolved
-        </button>
+          Status: {issue.status || "pending"}
+        </span>
 
-      )}
+      </div>
 
     </div>
 
@@ -104,3 +287,4 @@ const IssueCard = ({ issue }) => {
 };
 
 export default IssueCard;
+
