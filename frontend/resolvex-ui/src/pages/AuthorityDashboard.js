@@ -890,21 +890,50 @@ const AuthorityDashboard = () => {
 
   /* Firestore subscription */
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "issues"), snapshot => {
-      try {
-        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        setIssues(data);
-        setEscalatedIssues(data.filter(i => i.status === "pending" && calcAge(i.createdAt) >= ESCALATION_DAYS));
-        setLoading(false);
-      } catch (err) {
-        console.error("Authority dashboard error:", err);
-        setError("Failed to load issues.");
-        setLoading(false);
-      }
-    });
-    return () => unsub();
-  }, []);
+  let mounted = true;
 
+  const unsub = onSnapshot(
+    collection(db, "issues"),
+
+    (snapshot) => {
+      if (!mounted) return;
+
+      const data = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      setIssues(data);
+
+      setEscalatedIssues(
+        data.filter(
+          (i) =>
+            i.status === "pending" &&
+            calcAge(i.createdAt) >= ESCALATION_DAYS
+        )
+      );
+
+      setLoading(false); // ✅ ALWAYS STOP LOADING
+    },
+
+    (error) => {
+      console.error("🔥 FIREBASE ERROR:", error);
+      setError("Permission denied or Firebase error");
+      setLoading(false); // ✅ CRITICAL FIX
+    }
+  );
+
+  // 🔥 FAILSAFE (prevents infinite loading)
+  const timeout = setTimeout(() => {
+    if (mounted) setLoading(false);
+  }, 4000);
+
+  return () => {
+    mounted = false;
+    unsub();
+    clearTimeout(timeout);
+  };
+}, []);
   /* Actions */
   async function handleResolve(issueId, note) {
     try {

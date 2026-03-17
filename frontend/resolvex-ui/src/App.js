@@ -2,6 +2,8 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 /* PAGES */
+import Home from "./pages/Home"; // ✅ NEW
+
 import StudentDashboard from "./pages/StudentDashboard";
 import CommitteeDashboard from "./pages/CommitteeDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -15,16 +17,6 @@ import Leaderboard from "./pages/Leaderboard";
 
 /*
 ============================================================
-DEMO ROOT REDIRECT (NO LOGIN)
-============================================================
-*/
-
-function RootRedirect() {
-  return <Navigate to="/student" replace />;
-}
-
-/*
-============================================================
 APP ROUTER (PUBLIC MODE)
 ============================================================
 */
@@ -34,24 +26,24 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* ROOT */}
-        <Route path="/" element={<RootRedirect />} />
+        {/* ✅ LANDING PAGE */}
+        <Route path="/" element={<Home />} />
 
-        {/* DASHBOARDS (ALL PUBLIC) */}
+        {/* DASHBOARDS */}
         <Route path="/student" element={<StudentDashboard />} />
         <Route path="/committee" element={<CommitteeDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/authority" element={<AuthorityDashboard />} />
 
-        {/* FEATURES (ALL PUBLIC) */}
+        {/* FEATURES */}
         <Route path="/feed" element={<IssueFeed />} />
         <Route path="/report" element={<ReportIssue />} />
         <Route path="/my-issues" element={<MyIssues />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
 
-        {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/student" replace />} />
+        {/* ✅ FALLBACK → GO HOME */}
+        <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
     </BrowserRouter>
