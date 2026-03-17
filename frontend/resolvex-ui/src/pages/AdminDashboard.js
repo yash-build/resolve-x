@@ -1077,30 +1077,49 @@ const AdminDashboard = () => {
 
   /* ── FIRESTORE REALTIME (unchanged logic) ── */
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "issues"),
-      (snapshot) => {
-        try {
-          const issuesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setIssues(issuesData);
-          setCommitteeAnalytics(calculateCommitteeAnalytics(issuesData));
-          setCategoryDistribution(calculateCategoryDistribution(issuesData));
-          setHeatmapData(calculateLocationHeatmap(issuesData));
-          setLoading(false);
-        } catch (err) {
-          console.error("Admin dashboard analytics error:", err);
-          setError("Failed to calculate dashboard analytics.");
-          setLoading(false);
-        }
-      },
-      (err) => {
-        console.error("Firestore subscription error:", err);
-        setError("Realtime dashboard connection failed.");
+  let mounted = true;
+
+  const unsubscribe = onSnapshot(
+    collection(db, "issues"),
+    (snapshot) => {
+      if (!mounted) return;
+
+      try {
+        const issuesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        setIssues(issuesData);
+        setCommitteeAnalytics(calculateCommitteeAnalytics(issuesData));
+        setCategoryDistribution(calculateCategoryDistribution(issuesData));
+        setHeatmapData(calculateLocationHeatmap(issuesData));
+
+        setLoading(false); // 🔥 IMPORTANT
+      } catch (err) {
+        console.error("Admin analytics error:", err);
+        setError("Failed to process data.");
         setLoading(false);
       }
-    );
-    return () => unsubscribe();
-  }, []);
+    },
+    (err) => {
+      console.error("Firestore error:", err);
+      setError("Realtime connection failed.");
+      setLoading(false);
+    }
+  );
+
+  // 🔥 SAFETY FIX (prevents infinite loading)
+  const timeout = setTimeout(() => {
+    if (mounted) setLoading(false);
+  }, 4000);
+
+  return () => {
+    mounted = false;
+    unsubscribe();
+    clearTimeout(timeout);
+  };
+}, []);
 
   /* ── LOADING ── */
   if (loading) return (
