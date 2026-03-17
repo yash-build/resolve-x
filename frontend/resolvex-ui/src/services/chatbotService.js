@@ -1,54 +1,211 @@
-// src/services/chatbotService.js
+/* ===================================================== */
+/* RESOLVEX AI CHATBOT SERVICE */
+/* ===================================================== */
 
-import campusKnowledge from "../data/campusKnowledge"
+/*
+ResolveX Chatbot Service
 
-function normalize(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
+This service is responsible for generating responses
+for the AI campus assistant.
+
+System Workflow:
+
+User Message
+↓
+Knowledge Base Search
+↓
+If answer exists → return instantly
+↓
+If not found → call AI API
+↓
+Return AI generated response
+
+Benefits:
+
+• Faster responses
+• Reduced API cost
+• Platform-aware chatbot
+*/
+
+/* ===================================================== */
+/* IMPORT SERVICES */
+/* ===================================================== */
+
+import { searchKnowledgeBase } from "./knowledgeSearch";
+
+/* ===================================================== */
+/* ENVIRONMENT CONFIGURATION */
+/* ===================================================== */
+
+/*
+IMPORTANT
+
+Create a .env file in your project root and add:
+
+REACT_APP_OPENAI_API_KEY=your_api_key_here
+*/
+
+const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY;
+
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+
+/* ===================================================== */
+/* SYSTEM PROMPT BUILDER */
+/* ===================================================== */
+
+function buildSystemPrompt() {
+
+return `
+You are ResolveX AI, an intelligent campus governance assistant.
+
+About ResolveX:
+
+ResolveX is a campus platform where students report issues,
+students upvote issues, committees resolve problems,
+and administrators monitor campus operations.
+
+Platform workflow:
+
+Student reports issue
+↓
+Issue appears in public issue feed
+↓
+Students upvote issue
+↓
+System prioritizes issue
+↓
+Issue assigned to committee
+↓
+Committee resolves issue
+↓
+Administrators monitor analytics
+
+Committees:
+
+Food → Mess Committee
+Hostel → Hostel Committee
+Hygiene → Sanitation Committee
+Infrastructure → Maintenance Committee
+Discipline → Disciplinary Committee
+
+Your responsibilities:
+
+• Help students understand ResolveX
+• Explain how to report issues
+• Guide users about campus governance
+• Provide helpful responses
+
+Always respond clearly and concisely.
+`;
+
 }
 
-function scoreMatch(userInput, keywords) {
-  let score = 0
+/* ===================================================== */
+/* OPENAI API CALL */
+/* ===================================================== */
 
-  keywords.forEach((keyword) => {
-    if (userInput.includes(keyword)) {
-      score += 1
-    }
-  })
+async function callOpenAI(question) {
 
-  return score
+try {
+
+const response = await fetch(OPENAI_API_URL, {
+
+method: "POST",
+
+headers: {
+"Content-Type": "application/json",
+Authorization: `Bearer ${OPENAI_API_KEY}`
+},
+
+body: JSON.stringify({
+
+model: "gpt-4o-mini",
+
+messages: [
+
+{
+role: "system",
+content: buildSystemPrompt()
+},
+
+{
+role: "user",
+content: question
 }
 
-export function getBotResponse(message) {
+],
 
-  const cleaned = normalize(message)
+temperature: 0.4,
+max_tokens: 400
 
-  let bestMatch = null
-  let highestScore = 0
+})
 
-  campusKnowledge.forEach((item) => {
+});
 
-    const score = scoreMatch(cleaned, item.keywords)
+if (!response.ok) {
 
-    if (score > highestScore) {
-      highestScore = score
-      bestMatch = item
-    }
+throw new Error("OpenAI API request failed");
 
-  })
-
-  if (bestMatch && highestScore > 0) {
-    return bestMatch.response
-  }
-
-  return `I'm not completely sure about that.
-
-You can try one of these options:
-
-• Contact the **Student Help Desk**
-• Visit the **Academic Office**
-• Submit a request through **ResolveX Issue Reporting**
-
-If you'd like, I can guide you to the issue reporting page.`
 }
+
+const data = await response.json();
+
+return data.choices[0].message.content;
+
+}
+
+catch (error) {
+
+console.error("OpenAI Error:", error);
+
+return "The AI assistant is currently unavailable. Please try again later.";
+
+}
+
+}
+
+/* ===================================================== */
+/* MAIN CHATBOT FUNCTION */
+/* ===================================================== */
+
+export async function askResolveXAI(userQuestion) {
+
+try {
+
+/* ------------------------------------ */
+/* STEP 1: SEARCH KNOWLEDGE BASE */
+/* ------------------------------------ */
+
+const knowledgeResult = searchKnowledgeBase(userQuestion);
+
+if (knowledgeResult.found) {
+
+return knowledgeResult.answer;
+
+}
+
+/* ------------------------------------ */
+/* STEP 2: CALL AI MODEL */
+/* ------------------------------------ */
+
+const aiResponse = await callOpenAI(userQuestion);
+
+return aiResponse;
+
+}
+
+catch (error) {
+
+console.error("Chatbot Service Error:", error);
+
+return "Something went wrong while processing your request.";
+
+}
+
+}
+
+/* ===================================================== */
+/* EXPORT FUNCTIONS */
+/* ===================================================== */
+
+export default askResolveXAI;

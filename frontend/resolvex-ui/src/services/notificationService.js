@@ -1,133 +1,180 @@
-/*
-========================================================
-ResolveX Notification Service
-========================================================
-
-Handles all notification related Firestore operations.
-
-Features:
-• Create notification
-• Subscribe to user notifications
-• Mark notifications as read
-• Real-time updates
-
-========================================================
-*/
-
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  updateDoc,
-  doc
-} from "firebase/firestore";
+/* ========================================================= */
+/* RESOLVEX NOTIFICATION SERVICE */
+/* ========================================================= */
 
 import { db } from "./firebase";
 
-/*
-========================================================
-Create Notification
-========================================================
-*/
+import {
+collection,
+addDoc,
+serverTimestamp,
+query,
+where,
+orderBy,
+onSnapshot,
+updateDoc,
+doc
+} from "firebase/firestore";
 
-export async function createNotification(notificationData) {
+/* ========================================================= */
+/* CREATE NOTIFICATION */
+/* ========================================================= */
 
-  try {
+export async function createNotification({
+userId,
+message,
+type
+}){
 
-    const notification = {
+try{
 
-      ...notificationData,
+await addDoc(
+collection(db,"notifications"),
+{
+userId:userId,
+message:message,
+type:type,
+read:false,
+createdAt:serverTimestamp()
+}
+);
 
-      read: false,
+}catch(error){
 
-      createdAt: serverTimestamp()
-
-    };
-
-    await addDoc(
-      collection(db, "notifications"),
-      notification
-    );
-
-  } catch (error) {
-
-    console.error("Notification creation error:", error);
-
-  }
+console.error("Notification Creation Error:",error);
 
 }
 
-/*
-========================================================
-Subscribe to User Notifications
-========================================================
-*/
+}
 
-export function subscribeToNotifications(userId, callback) {
+/* ========================================================= */
+/* ISSUE CREATED */
+/* ========================================================= */
 
-  const notificationQuery = query(
+export async function notifyIssueCreated({
+userId,
+title
+}){
 
-    collection(db, "notifications"),
+await createNotification({
 
-    where("userId", "==", userId),
+userId:userId,
 
-    orderBy("createdAt", "desc")
+message:`Your issue "${title}" has been submitted.`,
 
-  );
+type:"issue_created"
 
-  const unsubscribe = onSnapshot(
-
-    notificationQuery,
-
-    (snapshot) => {
-
-      const notifications = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      callback(notifications);
-
-    },
-
-    (error) => {
-
-      console.error("Notification listener error:", error);
-
-    }
-
-  );
-
-  return unsubscribe;
+});
 
 }
 
-/*
-========================================================
-Mark Notification As Read
-========================================================
-*/
+/* ========================================================= */
+/* ISSUE RESOLVED */
+/* ========================================================= */
 
-export async function markNotificationAsRead(notificationId) {
+export async function notifyIssueResolved({
+userId,
+title
+}){
 
-  try {
+await createNotification({
 
-    const notificationRef = doc(db, "notifications", notificationId);
+userId:userId,
 
-    await updateDoc(notificationRef, {
+message:`Your issue "${title}" has been resolved.`,
 
-      read: true
+type:"issue_resolved"
 
-    });
+});
 
-  } catch (error) {
+}
 
-    console.error("Notification update error:", error);
+/* ========================================================= */
+/* ASSIGNMENT */
+/* ========================================================= */
 
-  }
+export async function notifyAssignment({
+userId,
+title
+}){
+
+await createNotification({
+
+userId:userId,
+
+message:`New assignment posted: ${title}`,
+
+type:"assignment"
+
+});
+
+}
+
+/* ========================================================= */
+/* ANNOUNCEMENT */
+/* ========================================================= */
+
+export async function notifyAnnouncement({
+userId,
+title
+}){
+
+await createNotification({
+
+userId:userId,
+
+message:`Announcement: ${title}`,
+
+type:"announcement"
+
+});
+
+}
+
+/* ========================================================= */
+/* REALTIME SUBSCRIPTION */
+/* ========================================================= */
+
+export function subscribeToNotifications(userId,callback){
+
+const q = query(
+collection(db,"notifications"),
+where("userId","==",userId),
+orderBy("createdAt","desc")
+);
+
+return onSnapshot(q,(snapshot)=>{
+
+const list = snapshot.docs.map(doc=>({
+id:doc.id,
+...doc.data()
+}));
+
+callback(list);
+
+});
+
+}
+
+/* ========================================================= */
+/* MARK NOTIFICATION AS READ */
+/* ========================================================= */
+
+export async function markNotificationAsRead(notificationId){
+
+try{
+
+await updateDoc(
+doc(db,"notifications",notificationId),
+{
+read:true
+}
+);
+
+}catch(error){
+
+console.error("Notification Update Error:",error);
+
+}
 
 }

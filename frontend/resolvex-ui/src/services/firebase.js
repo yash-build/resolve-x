@@ -1,95 +1,67 @@
-/*
-==================================================
-RESOLVEX FIREBASE SERVICE
-==================================================
-
-Handles:
-
-• Firebase initialization
-• Authentication
-• Firestore database
-• Google login
-• Firebase storage
-
-Analytics removed to prevent local runtime errors.
-*/
 
 import { initializeApp } from "firebase/app";
-
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-
 import { getStorage } from "firebase/storage";
 
 /*
-==================================================
+============================================================
 FIREBASE CONFIG
-==================================================
+============================================================
 */
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCjE55naQqS_RYXNVaBoFYI4jiERy5kxTg",
-
-  authDomain: "resolvex-60dc7.firebaseapp.com",
-
-  projectId: "resolvex-60dc7",
-
-  storageBucket: "resolvex-60dc7.appspot.com",
-
-  messagingSenderId: "990924004969",
-
-  appId: "1:990924004969:web:b3d8889767d6f415effc6c"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 /*
-==================================================
-INITIALIZE FIREBASE
-==================================================
+============================================================
+INITIALIZE APP
+============================================================
 */
 
 const app = initializeApp(firebaseConfig);
 
 /*
-==================================================
-AUTHENTICATION
-==================================================
+============================================================
+AUTH
+============================================================
 */
 
-export const auth = getAuth(app);
+const auth = getAuth(app);
 
 /*
-==================================================
-GOOGLE LOGIN PROVIDER
-==================================================
+Ensure login session persists across refresh
 */
 
-export const googleProvider = new GoogleAuthProvider();
-
-googleProvider.setCustomParameters({
-  prompt: "select_account"
-});
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log("Auth persistence enabled");
+  })
+  .catch((error) => {
+    console.error("Persistence error:", error);
+  });
 
 /*
-==================================================
-FIRESTORE DATABASE
-==================================================
+============================================================
+DATABASE
+============================================================
 */
 
-export const db = getFirestore(app);
+const db = getFirestore(app);
 
 /*
-==================================================
-FIREBASE STORAGE
-==================================================
+============================================================
+STORAGE
+============================================================
 */
 
-export const storage = getStorage(app);
+const storage = getStorage(app);
 
-/*
-==================================================
-EXPORT APP
-==================================================
-*/
+export { auth, db, storage };
 
-export default app;

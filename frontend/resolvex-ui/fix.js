@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+const fs = require('fs');
+
+const code = `import React, { useState, useEffect } from "react";
 import { db } from "../services/firebase";
 import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
@@ -286,3 +288,7 @@ function ReportIssue() {
 }
 
 export default ReportIssue;
+`;
+
+fs.writeFileSync('src/pages/ReportIssue.js', code);
+console.log('Done. Lines:', code.split('\n').length);

@@ -1,76 +1,113 @@
-import React, { useEffect } from "react";
 
-import { signInWithPopup } from "firebase/auth";
-
-import { auth, googleProvider } from "../services/firebase";
-
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
 
-const Login = () => {
+function Login() {
+
+  const { user, loading, loginWithGoogle } = useAuth();
 
   const navigate = useNavigate();
 
-  const { currentUser } = useAuth();
+  const [error, setError] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
 
   /*
-  ------------------------------------------------
-  Redirect if already logged in
-  ------------------------------------------------
+  ============================================================
+  REDIRECT AFTER LOGIN
+  ============================================================
   */
 
   useEffect(() => {
 
-    if (currentUser) {
-      navigate("/student-dashboard");
+    if (loading) return;
+
+    if (user) {
+      navigate("/student", { replace: true });
     }
 
-  }, [currentUser, navigate]);
+  }, [user, loading, navigate]);
 
   /*
-  ------------------------------------------------
-  Google Login
-  ------------------------------------------------
+  ============================================================
+  GOOGLE LOGIN
+  ============================================================
   */
 
-  const handleLogin = async () => {
+  const handleGoogleLogin = async () => {
+
+    setError("");
 
     try {
 
-      await signInWithPopup(auth, googleProvider);
+      setSigningIn(true);
 
-      navigate("/student-dashboard");
+      await loginWithGoogle();
 
-    } catch (error) {
+    } catch (err) {
 
-      console.error("Login error:", error);
+      console.error(err);
 
-      alert("Login failed. Try again.");
+      setError("Google login failed.");
+
+    } finally {
+
+      setSigningIn(false);
 
     }
 
   };
 
+  /*
+  ============================================================
+  LOADING STATE
+  ============================================================
+  */
+
+  if (loading) {
+
+    return (
+
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+
+      </div>
+
+    );
+
+  }
+
+  /*
+  ============================================================
+  LOGIN UI
+  ============================================================
+  */
+
   return (
 
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
 
-      <div className="bg-white p-10 rounded-xl shadow-lg w-96 text-center">
+      <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-sm">
 
-        <h1 className="text-3xl font-bold text-indigo-600 mb-6">
-          ResolveX
+        <h1 className="text-2xl font-bold mb-4 text-center">
+          ResolveX Login
         </h1>
 
-        <p className="text-gray-600 mb-6">
-          Smart Campus Issue Resolution Platform
-        </p>
+        {error && (
+          <div className="mb-4 text-red-500 text-sm text-center">
+            {error}
+          </div>
+        )}
 
         <button
-          onClick={handleLogin}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
+          onClick={handleGoogleLogin}
+          disabled={signingIn}
+          className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700"
         >
-          Sign in with Google
+
+          {signingIn ? "Signing in..." : "Login with Google"}
+
         </button>
 
       </div>
@@ -79,6 +116,7 @@ const Login = () => {
 
   );
 
-};
+}
 
 export default Login;
+

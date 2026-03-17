@@ -1,381 +1,98 @@
+
 import React,
 {
-createContext,
-useContext,
-useEffect,
-useState
+  createContext,
+  useContext,
+  useEffect,
+  useState
 } from "react";
 
-import {
-auth,
-db,
-googleProvider
-} from "../services/firebase";
-
-import {
-onAuthStateChanged,
-signInWithPopup,
-signOut
+import
+{
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut
 } from "firebase/auth";
 
-import {
-doc,
-getDoc,
-setDoc,
-serverTimestamp
-} from "firebase/firestore";
+import { auth } from "../services/firebase";
 
-/*
-==============================================================
-RESOLVEX AUTHENTICATION CONTEXT
-==============================================================
+const AuthContext = createContext(null);
 
-This module manages all authentication logic
-for the ResolveX platform.
+export function AuthProvider({ children }) {
 
-Features
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-• Firebase Authentication
-• Google Login
-• User profile loading
-• Firestore user document creation
-• Role management
-• Logout system
-• Session persistence
-• Loading states
-• Role helpers
+  useEffect(() => {
 
-User Roles
+    const initAuth = async () => {
 
-student
-committee
-admin
-authority
+      try {
 
-Firestore Structure
+        await getRedirectResult(auth);
 
-users/{uid}
+      } catch (error) {
 
-{
-name
-email
-role
-createdAt
-}
+        console.warn("Redirect result error:", error);
 
-==============================================================
-*/
+      }
 
-const AuthContext = createContext();
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
 
-/*
-==============================================================
-HOOK FOR USING AUTH CONTEXT
-==============================================================
-*/
+        console.log("AUTH STATE:", firebaseUser);
 
-export const useAuth = () => {
+        setUser(firebaseUser);
+        setLoading(false);
 
-return useContext(AuthContext);
+      });
 
-};
+      return unsubscribe;
 
-/*
-==============================================================
-AUTH PROVIDER COMPONENT
-==============================================================
-*/
+    };
 
-export const AuthProvider = ({ children }) => {
+    initAuth();
 
-/*
---------------------------------------------------------------
-STATE MANAGEMENT
---------------------------------------------------------------
-*/
+  }, []);
 
-const [currentUser, setCurrentUser] = useState(null);
+  const loginWithGoogle = async () => {
 
-const [userProfile, setUserProfile] = useState(null);
+    const provider = new GoogleAuthProvider();
 
-const [loading, setLoading] = useState(true);
+    await signInWithRedirect(auth, provider);
 
-const [authError, setAuthError] = useState(null);
+  };
 
+  const logout = async () => {
 
+    await signOut(auth);
 
-/*
-==============================================================
-GOOGLE LOGIN FUNCTION
-==============================================================
-*/
+  };
 
-const loginWithGoogle = async () => {
+  const value =
+  {
+    user,
+    loading,
+    loginWithGoogle,
+    logout
+  };
 
-try {
+  return (
 
-setAuthError(null);
+    <AuthContext.Provider value={value}>
 
-const result = await signInWithPopup(
-auth,
-googleProvider
-);
+      {children}
 
-const user = result.user;
+    </AuthContext.Provider>
 
-if (!user) return;
-
-/*
---------------------------------------------------------------
-CHECK FIRESTORE USER DOCUMENT
---------------------------------------------------------------
-*/
-
-const userRef = doc(db, "users", user.uid);
-
-const userSnap = await getDoc(userRef);
-
-/*
---------------------------------------------------------------
-CREATE USER DOCUMENT IF NOT EXISTS
---------------------------------------------------------------
-*/
-
-if (!userSnap.exists()) {
-
-const newUser = {
-
-name: user.displayName || "Unknown User",
-
-email: user.email,
-
-role: "student",
-
-createdAt: serverTimestamp()
-
-};
-
-await setDoc(userRef, newUser);
-
-setUserProfile(newUser);
-
-} else {
-
-setUserProfile(userSnap.data());
+  );
 
 }
 
-} catch (error) {
+export function useAuth() {
 
-console.error("Google login failed:", error);
-
-setAuthError(error.message);
+  return useContext(AuthContext);
 
 }
 
-};
-
-
-
-/*
-==============================================================
-LOGOUT FUNCTION
-==============================================================
-*/
-
-const logout = async () => {
-
-try {
-
-await signOut(auth);
-
-setCurrentUser(null);
-
-setUserProfile(null);
-
-} catch (error) {
-
-console.error("Logout failed:", error);
-
-}
-
-};
-
-
-
-/*
-==============================================================
-AUTH STATE LISTENER
-==============================================================
-*/
-
-useEffect(() => {
-
-const unsubscribe = onAuthStateChanged(
-
-auth,
-
-async (user) => {
-
-if (user) {
-
-setCurrentUser(user);
-
-try {
-
-/*
-----------------------------------------------------------
-FETCH USER PROFILE FROM FIRESTORE
-----------------------------------------------------------
-*/
-
-const userRef = doc(db, "users", user.uid);
-
-const userSnap = await getDoc(userRef);
-
-if (userSnap.exists()) {
-
-setUserProfile(userSnap.data());
-
-} else {
-
-/*
-----------------------------------------------------------
-CREATE USER PROFILE IF MISSING
-----------------------------------------------------------
-*/
-
-const newUser = {
-
-name: user.displayName || "Unknown",
-
-email: user.email,
-
-role: "student",
-
-createdAt: serverTimestamp()
-
-};
-
-await setDoc(userRef, newUser);
-
-setUserProfile(newUser);
-
-}
-
-} catch (error) {
-
-console.error(
-"Failed loading user profile",
-error
-);
-
-}
-
-} else {
-
-/*
-----------------------------------------------------------
-USER LOGGED OUT
-----------------------------------------------------------
-*/
-
-setCurrentUser(null);
-
-setUserProfile(null);
-
-}
-
-setLoading(false);
-
-}
-
-);
-
-return unsubscribe;
-
-}, []);
-
-
-
-/*
-==============================================================
-ROLE CHECK HELPERS
-==============================================================
-*/
-
-const isStudent = () => {
-
-return userProfile?.role === "student";
-
-};
-
-const isCommittee = () => {
-
-return userProfile?.role === "committee";
-
-};
-
-const isAdmin = () => {
-
-return userProfile?.role === "admin";
-
-};
-
-const isAuthority = () => {
-
-return userProfile?.role === "authority";
-
-};
-
-
-
-/*
-==============================================================
-AUTH CONTEXT VALUE
-==============================================================
-*/
-
-const value = {
-
-currentUser,
-
-userProfile,
-
-loginWithGoogle,
-
-logout,
-
-loading,
-
-authError,
-
-isStudent,
-
-isCommittee,
-
-isAdmin,
-
-isAuthority
-
-};
-
-
-
-/*
-==============================================================
-RENDER PROVIDER
-==============================================================
-*/
-
-return (
-
-<AuthContext.Provider value={value}>
-
-{!loading && children}
-
-</AuthContext.Provider>
-
-);
-
-};

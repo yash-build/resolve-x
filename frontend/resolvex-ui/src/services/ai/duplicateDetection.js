@@ -1,81 +1,175 @@
+/* ===================================================== */
+/* RESOLVEX DUPLICATE ISSUE DETECTION ENGINE */
+/* ===================================================== */
+
 /*
-==========================================
-DUPLICATE ISSUE DETECTION ENGINE
-==========================================
+This service detects whether a newly reported issue
+is similar to existing issues.
 
-Algorithm:
+Goals:
 
-1 Normalize text
-2 Tokenize
-3 Compare tokens
-4 Calculate Jaccard similarity
+• prevent duplicate reports
+• keep issue database clean
+• encourage students to support existing issues
 
-If similarity > threshold → duplicate
+Algorithm Used:
+
+1. Normalize text
+2. Remove stopwords
+3. Tokenize sentences
+4. Compare tokens using Jaccard similarity
+5. Return issues above similarity threshold
+   */
+
+/* ===================================================== */
+/* CONFIGURATION */
+/* ===================================================== */
+
+const SIMILARITY_THRESHOLD = 0.45;
+
+/*
+Words that don't add meaningful context
 */
 
-const normalize = (text) => {
+const STOP_WORDS = [
 
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, "")
-    .trim();
+"a","an","the","is","are","was","were","in","on","at",
+"of","to","for","with","and","or","this","that","it",
+"my","our","your","their"
 
-};
+];
 
-const tokenize = (text) => {
+/* ===================================================== */
+/* TEXT NORMALIZATION */
+/* ===================================================== */
 
-  return normalize(text).split(/\s+/);
+function normalizeText(text) {
 
-};
+if (!text) return "";
 
-const jaccardSimilarity = (tokensA, tokensB) => {
+return text
+.toLowerCase()
+.replace(/[^\w\s]/g,"")
+.trim();
 
-  const setA = new Set(tokensA);
-  const setB = new Set(tokensB);
+}
 
-  const intersection = new Set(
-    [...setA].filter(x => setB.has(x))
-  );
+/* ===================================================== */
+/* TOKENIZATION */
+/* ===================================================== */
 
-  const union = new Set([...setA, ...setB]);
+function tokenize(text) {
 
-  return intersection.size / union.size;
+const normalized = normalizeText(text);
 
-};
+const tokens = normalized.split(" ");
 
-export const detectDuplicateIssues = (
-  newDescription,
-  existingIssues
-) => {
+return tokens.filter(word => !STOP_WORDS.includes(word));
 
-  const newTokens = tokenize(newDescription);
+}
 
-  const threshold = 0.4;
+/* ===================================================== */
+/* JACCARD SIMILARITY */
+/* ===================================================== */
 
-  const duplicates = [];
+function calculateJaccardSimilarity(tokensA, tokensB) {
 
-  existingIssues.forEach(issue => {
+const setA = new Set(tokensA);
+const setB = new Set(tokensB);
 
-    const existingTokens = tokenize(issue.description);
+const intersection = new Set(
+[...setA].filter(x => setB.has(x))
+);
 
-    const similarity = jaccardSimilarity(
-      newTokens,
-      existingTokens
-    );
+const union = new Set([
+...setA,
+...setB
+]);
 
-    if (similarity > threshold) {
+return intersection.size / union.size;
 
-      duplicates.push({
-        ...issue,
-        similarity
-      });
+}
 
-    }
+/* ===================================================== */
+/* COMPARE TWO TITLES */
+/* ===================================================== */
 
-  });
+function compareTitles(titleA, titleB) {
 
-  duplicates.sort((a, b) => b.similarity - a.similarity);
+const tokensA = tokenize(titleA);
+const tokensB = tokenize(titleB);
 
-  return duplicates.slice(0, 3);
+return calculateJaccardSimilarity(tokensA, tokensB);
 
-};
+}
+
+/* ===================================================== */
+/* MAIN DUPLICATE DETECTION FUNCTION */
+/* ===================================================== */
+
+export function detectDuplicateIssues(newIssueTitle, existingIssues = []) {
+
+if (!newIssueTitle || existingIssues.length === 0) {
+
+return [];
+
+}
+
+const duplicates = [];
+
+existingIssues.forEach(issue => {
+
+const similarityScore = compareTitles(
+newIssueTitle,
+issue.title
+);
+
+if (similarityScore >= SIMILARITY_THRESHOLD) {
+
+duplicates.push({
+
+id: issue.id,
+title: issue.title,
+similarity: similarityScore,
+upvotes: issue.upvotes || 0,
+status: issue.status || "pending"
+
+});
+
+}
+
+});
+
+/*
+Sort duplicates by similarity
+*/
+
+duplicates.sort((a,b) => b.similarity - a.similarity);
+
+return duplicates;
+
+}
+
+/* ===================================================== */
+/* HELPER: FORMAT DUPLICATE RESULTS */
+/* ===================================================== */
+
+export function formatDuplicateResults(duplicates) {
+
+if (!duplicates.length) {
+
+return null;
+
+}
+
+return duplicates.map(issue => ({
+
+id: issue.id,
+title: issue.title,
+similarity: Math.round(issue.similarity * 100),
+upvotes: issue.upvotes,
+status: issue.status
+
+}));
+
+}
