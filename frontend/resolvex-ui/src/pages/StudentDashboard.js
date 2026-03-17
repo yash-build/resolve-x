@@ -410,7 +410,7 @@ function Header({ user, unreadCount, navigate, logout }) {
                 </div>
               )}
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                {user?.displayName?.split(" ")[0]}
+                {user?.displayName ? user.displayName.split(" ")[0] : "Student"}
               </span>
             </button>
 
@@ -1311,7 +1311,9 @@ function QuickActionsBar({ navigate }) {
 ───────────────────────────────────────────────────────── */
 
 function StudentDashboard() {
-  const { user, logout } = useAuth();
+  const auth = useAuth() || {};
+const user = auth.user || null;
+const logout = auth.logout || (() => {});
   const navigate = useNavigate();
 
   const [myIssues, setMyIssues] = useState([]);
@@ -1340,7 +1342,9 @@ function StudentDashboard() {
       setAllIssues(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, console.error);
 
-    const unsubNotif = subscribeToNotifications(user.uid, setNotifications);
+    const unsubNotif = user?.uid
+  ? subscribeToNotifications(user.uid, setNotifications)
+  : () => {};
 
     return () => { unsubMy(); unsubAll(); unsubNotif(); };
   }, [user]);
@@ -1352,9 +1356,9 @@ function StudentDashboard() {
     : 0;
 
   async function handleLogout() {
-    await logout();
-    navigate("/login");
-  }
+  if (logout) await logout();
+  navigate("/");
+}
 
   const sparkIssues = [2, 3, 1, 4, 3, 5, myIssues.length || 4];
   const sparkResolved = [1, 2, 1, 3, 2, 4, resolvedCount || 3];
